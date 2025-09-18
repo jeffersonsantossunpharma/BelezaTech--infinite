@@ -1,0 +1,1688 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BelezaTech Infinite</title>
+  <meta name="description" content="Protótipo funcional do SaaS de gestão de salões de beleza com Supabase, FullCalendar, IA (Gemini) e integração Mercado Pago (stub)." />
+  <meta name="theme-color" content="#7c3aed" id="theme-color-meta" />
+  <!--
+    =============================================================================
+    BelezaTech Infinite — Single-file Prototype (index.html)
+    =============================================================================
+    ⚡ Como usar (resumo):
+      1) Suba este único arquivo para seu repositório no GitHub como `index.html`.
+      2) Faça o deploy no Vercel (ou hospede em qualquer serviço estático).
+      3) Configure as variáveis em window.ENV (no bloco abaixo) — ou substitua
+         diretamente os valores pelos do seu projeto Supabase e APIs.
+      4) Abra o site, crie uma conta (Cadastro) e siga o Onboarding.
+      5) Este arquivo usa somente front-end + Supabase (Auth/DB/Storage/Realtime).
+         Funções que exigem segredo (Mercado Pago, Webhooks) estão com STUB
+         apontando para uma rota /api que você criará no Vercel (serverless).
+
+    🔐 Segurança / Multi-Tenancy (essencial no Supabase):
+      - Ative RLS (Row Level Security) em TODAS as tabelas.
+      - Use policies por owner_id (usuário) e/ou salon_id para isolar salões.
+      - ESTE ARQUIVO É APENAS O FRONT-END. Aplique suas políticas no Supabase.
+
+    🗄️ Esquema SQL sugerido (execute no Supabase → SQL Editor):
+    -----------------------------------------------------------------------------
+    -- Tabela de salões
+    create table if not exists salons (
+      id uuid primary key default gen_random_uuid(),
+      owner_id uuid references auth.users not null,
+      name text not null,
+      slug text unique not null,
+      address text,
+      opening_hours jsonb,                -- {mon:[["09:00","18:00"]],...}
+      logo_url text,
+      theme jsonb,                        -- {primary:"#7c3aed",surface:"#ffffff",text:"#0f172a",bg:"#0b1220"}
+      mp_public_key text,                 -- Mercado Pago (chave pública)
+      created_at timestamp with time zone default now()
+    );
+    alter table salons enable row level security;
+
+    -- Tabela de serviços
+    create table if not exists services (
+      id uuid primary key default gen_random_uuid(),
+      salon_id uuid references salons(id) not null,
+      name text not null,
+      price numeric(12,2) not null default 0,
+      duration_minutes int not null default 30,
+      online_bookable boolean not null default true,
+      created_at timestamp with time zone default now()
+    );
+    alter table services enable row level security;
+
+    -- Clientes
+    create table if not exists clients (
+      id uuid primary key default gen_random_uuid(),
+      salon_id uuid references salons(id) not null,
+      full_name text not null,
+      phone text,
+      email text,
+      notes text,                         -- observações técnicas
+      created_at timestamp with time zone default now()
+    );
+    alter table clients enable row level security;
+
+    -- Agendamentos
+    create table if not exists appointments (
+      id uuid primary key default gen_random_uuid(),
+      salon_id uuid references salons(id) not null,
+      client_id uuid references clients(id),
+      service_id uuid references services(id),
+      professional text,                  -- nome do profissional
+      start_at timestamptz not null,
+      end_at timestamptz not null,
+      status text not null default 'scheduled', -- scheduled|done|canceled
+      notes text,
+      created_by uuid references auth.users,
+      created_at timestamp with time zone default now()
+    );
+    create index on appointments (salon_id, start_at);
+    alter table appointments enable row level security;
+
+    -- Pagamentos (preenchidos por webhook/servidor)
+    create table if not exists payments (
+      id uuid primary key default gen_random_uuid(),
+      salon_id uuid references salons(id) not null,
+      appointment_id uuid references appointments(id),
+      client_id uuid references clients(id),
+      amount numeric(12,2) not null,
+      status text not null,               -- approved|pending|rejected
+      provider text,                      -- "mercadopago"
+      provider_ref text,                  -- id/preference/mp payment id
+      created_at timestamp with time zone default now()
+    );
+    alter table payments enable row level security;
+
+    -- Produtos (Estoque)
+    create table if not exists products (
+      id uuid primary key default gen_random_uuid(),
+      salon_id uuid references salons(id) not null,
+      name text not null,
+      sku text,
+      barcode text,
+      price numeric(12,2) not null default 0,
+      stock numeric(12,3) not null default 0,     -- unidades (ex.: ml)
+      unit text default 'un',                     -- un|ml|g
+      description text,
+      created_at timestamp with time zone default now()
+    );
+    create index on products (salon_id, name);
+    alter table products enable row level security;
+
+    -- Receita do Serviço (vincula produtos usados por serviço)
+    create table if not exists service_products (
+      id uuid primary key default gen_random_uuid(),
+      salon_id uuid references salons(id) not null,
+      service_id uuid references services(id) not null,
+      product_id uuid references products(id) not null,
+      qty_per_service numeric(12,3) not null default 1
+    );
+    alter table service_products enable row level security;
+
+    -- Movimentações de Estoque (histórico)
+    create table if not exists stock_movements (
+      id uuid primary key default gen_random_uuid(),
+      salon_id uuid references salons(id) not null,
+      product_id uuid references products(id) not null,
+      delta numeric(12,3) not null,              -- +entrada / -saída
+      reason text,                                -- "sale","recipe","adjust"
+      ref_id uuid,                                -- appointment/service/etc
+      created_at timestamp with time zone default now()
+    );
+    alter table stock_movements enable row level security;
+
+    -- Policies básicas (exemplo) — ajuste conforme seu caso:
+    -- Somente usuários que possuem/participam do salão enxergam seus dados.
+    -- Crie uma view user_salons mapeando usuários aos seus salões, etc.
+    -----------------------------------------------------------------------------
+
+    🪣 Buckets (Storage) sugeridos:
+      - salon-logos (público)       → caminho: logos/{salon_id}.png
+      - client-photos (privado)     → caminho: {salon_id}/{client_id}/{ts}.jpg
+
+    📌 Observação Mercado Pago:
+      - Para criar preferência/PIX dinâmico é OBRIGATÓRIO usar segredo (Access
+        Token) no servidor. Aqui usamos um STUB fetch('/api/mp/preference').
+        Você criará essa rota como Serverless no Vercel.
+  -->
+  <!-- Tailwind (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Tailwind base config (usamos classes utilitárias + variáveis CSS para tema dinâmico)
+    tailwind.config = {
+      theme: {
+        extend: {
+          spacing: { '128': '32rem' }
+        }
+      }
+    }
+  </script>
+
+  <!-- FullCalendar (Agenda) -->
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+
+  <!-- Supabase JS v2 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+  <!-- Utilidades -->
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/utc.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/timezone.js"></script>
+  <script>dayjs.extend(dayjs_plugin_utc); dayjs.extend(dayjs_plugin_timezone);</script>
+
+  <!-- Leitor de QR/Barcode -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
+
+  <!-- QRCode (para exibir PIX/links) -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+
+  <!-- Paleta de cores a partir do logo -->
+  <script src="https://cdn.jsdelivr.net/npm/node-vibrant@3.2.0/dist/vibrant.min.js"></script>
+
+  <style>
+    /* =======================================================================
+       Tema dinâmico (CSS Variables) + util classes
+       ======================================================================= */
+    :root {
+      --primary: #7c3aed; /* Roxo padrão */
+      --surface: #ffffff;
+      --text: #0f172a;    /* Slate-900 */
+      --bg: #0b1220;      /* fundo escuro dos cards/headers */
+      --muted: #334155;   /* Slate-600 */
+    }
+    .bg-primary { background-color: var(--primary) !important; }
+    .text-primary { color: var(--primary) !important; }
+    .border-primary { border-color: var(--primary) !important; }
+    .btn { @apply inline-flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium transition; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { filter: brightness(0.95); }
+    .btn-outline { border: 1px solid var(--primary); color: var(--primary); background: transparent; }
+    .btn-outline:hover { background: rgba(124,58,237,0.08); }
+    .chip { @apply inline-flex items-center px-2 py-1 rounded text-xs font-medium; background: rgba(124,58,237,0.1); color: var(--primary); }
+    .card { @apply rounded-lg border border-slate-200 bg-white shadow-sm; }
+    .card-dark { background: #0f172a; color: #e2e8f0; border-color: #1e293b; }
+    .input { @apply w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500; }
+    .label { @apply text-sm font-medium text-slate-700; }
+    .section-title { @apply text-xl font-semibold text-slate-900 mb-3; }
+    .subtle { @apply text-slate-500 text-sm; }
+    .link { @apply text-purple-600 hover:text-purple-700 underline; }
+
+    /* FullCalendar tweaks */
+    .fc .fc-toolbar-title { font-weight: 600; }
+    .fc .fc-button-primary { background: var(--primary); border-color: var(--primary); }
+    .fc .fc-button-primary:not(:disabled).fc-button-active,
+    .fc .fc-button-primary:not(:disabled):active { background: #5b21b6; border-color: #5b21b6; }
+
+    /* Toasts */
+    #toaster { position: fixed; top: 16px; right: 16px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+    .toast { @apply px-4 py-2 rounded-md shadow text-white; background: #0ea5e9; }
+    .toast.error { background: #ef4444; }
+    .toast.success { background: #10b981; }
+
+    /* Simple modal pattern */
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; z-index: 50; }
+    .modal { max-width: 640px; width: 92vw; }
+    .modal.show + .modal-backdrop, .modal-backdrop.show { display: flex; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+  <!-- Toaster -->
+  <div id="toaster"></div>
+
+  <!-- Topbar (aparece somente logado) -->
+  <header id="topbar" class="sticky top-0 z-40 hidden bg-white/80 backdrop-blur border-b border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded bg-primary flex items-center justify-center text-white font-bold">B</div>
+        <div>
+          <div class="font-semibold">BelezaTech Infinite</div>
+          <div class="text-xs subtle" id="salonNameTop">Painel do salão</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="btnIAInsight" class="btn btn-outline hidden sm:inline-flex" title="Gerar insights com IA">Insights IA</button>
+        <button id="btnGoPublic" class="btn btn-outline" title="Ver portal público">Portal Público</button>
+        <button id="btnLogout" class="btn btn-primary">Sair</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 py-6">
+    <!-- Auth (Login/Cadastro) -->
+    <section id="authSection" class="max-w-md mx-auto">
+      <div class="text-center mb-6">
+        <h1 class="text-2xl font-bold">BelezaTech Infinite</h1>
+        <p class="subtle">Entre ou crie sua conta para continuar</p>
+      </div>
+      <div class="card p-6 space-y-4">
+        <div class="flex gap-2 text-sm">
+          <button id="tabLogin" class="flex-1 btn-primary btn">Entrar</button>
+          <button id="tabSignup" class="flex-1 btn-outline btn">Cadastrar</button>
+        </div>
+        <div id="loginForm" class="space-y-3">
+          <div>
+            <label class="label">Email</label>
+            <input id="loginEmail" type="email" class="input" placeholder="voce@exemplo.com" />
+          </div>
+          <div>
+            <label class="label">Senha</label>
+            <input id="loginPass" type="password" class="input" placeholder="••••••••" />
+          </div>
+          <div class="flex items-center justify-between">
+            <button id="btnLogin" class="btn btn-primary">Entrar</button>
+            <button id="btnReset" class="text-sm link">Esqueci minha senha</button>
+          </div>
+        </div>
+        <div id="signupForm" class="space-y-3 hidden">
+          <div>
+            <label class="label">Email</label>
+            <input id="signupEmail" type="email" class="input" placeholder="voce@exemplo.com" />
+          </div>
+          <div>
+            <label class="label">Senha</label>
+            <input id="signupPass" type="password" class="input" placeholder="Mínimo 6 caracteres" />
+          </div>
+          <div>
+            <label class="label">Confirmar senha</label>
+            <input id="signupPass2" type="password" class="input" placeholder="Repita a senha" />
+          </div>
+          <button id="btnSignup" class="btn btn-primary w-full">Criar conta</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Onboarding -->
+    <section id="onboardingSection" class="hidden">
+      <div class="max-w-3xl mx-auto">
+        <h2 class="text-2xl font-bold mb-2">Bem-vindo! Vamos configurar seu salão</h2>
+        <p class="subtle mb-6">Preencha as informações abaixo. Você poderá alterar depois em Configurações.</p>
+        <div class="grid md:grid-cols-2 gap-6">
+          <!-- Passo 1: Dados do salão -->
+          <div class="card p-5 space-y-3">
+            <h3 class="section-title">1) Informações</h3>
+            <div>
+              <label class="label">Nome do salão</label>
+              <input id="obName" class="input" placeholder="Ex.: Studio Glow" />
+            </div>
+            <div>
+              <label class="label">Slug (link público)</label>
+              <input id="obSlug" class="input" placeholder="ex.: studio-glow" />
+              <div class="subtle">Seu portal ficará em <code>#/p/<span id="slugPreview">studio-glow</span></code></div>
+            </div>
+            <div>
+              <label class="label">Endereço</label>
+              <input id="obAddress" class="input" placeholder="Rua, número, cidade" />
+            </div>
+            <div>
+              <label class="label">Horário padrão (ex.: 09:00–18:00)</label>
+              <div class="grid grid-cols-2 gap-2">
+                <input id="obOpen" class="input" placeholder="Abertura 09:00" />
+                <input id="obClose" class="input" placeholder="Fechamento 18:00" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Passo 2: Logo + paleta -->
+          <div class="card p-5 space-y-3">
+            <h3 class="section-title">2) Logo & Estúdio de Cores</h3>
+            <div class="flex items-center gap-3">
+              <input type="file" id="obLogo" accept="image/*" />
+              <button id="btnExtractPalette" class="btn btn-outline">Sugerir paleta</button>
+            </div>
+            <div class="flex gap-3 items-center">
+              <img id="logoPreview" class="w-20 h-20 object-contain rounded border border-slate-200" alt="Logo preview" />
+              <div class="flex-1 grid grid-cols-3 gap-3">
+                <div>
+                  <label class="label">Primária</label>
+                  <input type="color" id="colorPrimary" class="w-full h-10 rounded cursor-pointer" value="#7c3aed" />
+                </div>
+                <div>
+                  <label class="label">Fundo (surface)</label>
+                  <input type="color" id="colorSurface" class="w-full h-10 rounded cursor-pointer" value="#ffffff" />
+                </div>
+                <div>
+                  <label class="label">Texto</label>
+                  <input type="color" id="colorText" class="w-full h-10 rounded cursor-pointer" value="#0f172a" />
+                </div>
+              </div>
+            </div>
+            <div class="card p-3">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="font-medium">Prévia do Tema</div>
+                  <div class="subtle">Checagem de contraste (WCAG)</div>
+                </div>
+                <div id="contrastBadge" class="chip">Contraste: —</div>
+              </div>
+              <div class="mt-3 p-4 rounded" id="themePreview" style="background: var(--surface); color: var(--text); border: 1px solid #e2e8f0;">
+                <div class="font-semibold">Studio Glow</div>
+                <div class="text-sm">Atendimento impecável com tecnologia.</div>
+                <button class="btn btn-primary mt-3">Botão Primário</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="mt-6 flex items-center justify-end gap-2">
+          <button id="btnSkipOnboarding" class="btn btn-outline">Pular</button>
+          <button id="btnSaveOnboarding" class="btn btn-primary">Salvar e continuar</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Dashboard + Navegação -->
+    <section id="appSection" class="hidden">
+      <div class="grid grid-cols-12 gap-6">
+        <!-- Sidebar -->
+        <aside class="col-span-12 lg:col-span-3 xl:col-span-2">
+          <nav class="card p-4 space-y-2 sticky top-20">
+            <button data-nav="dashboard" class="w-full text-left px-3 py-2 rounded hover:bg-slate-100">🏠 Dashboard</button>
+            <button data-nav="calendar" class="w-full text-left px-3 py-2 rounded hover:bg-slate-100">📅 Agenda</button>
+            <button data-nav="services" class="w-full text-left px-3 py-2 rounded hover:bg-slate-100">💅 Serviços</button>
+            <button data-nav="clients" class="w-full text-left px-3 py-2 rounded hover:bg-slate-100">👤 Clientes</button>
+            <button data-nav="inventory" class="w-full text-left px-3 py-2 rounded hover:bg-slate-100">📦 Estoque</button>
+            <button data-nav="payments" class="w-full text-left px-3 py-2 rounded hover:bg-slate-100">💳 Pagamentos</button>
+            <button data-nav="settings" class="w-full text-left px-3 py-2 rounded hover:bg-slate-100">⚙️ Configurações</button>
+          </nav>
+        </aside>
+
+        <!-- Conteúdo -->
+        <div class="col-span-12 lg:col-span-9 xl:col-span-10 space-y-6">
+
+          <!-- DASHBOARD -->
+          <div id="view-dashboard" class="space-y-6">
+            <div class="grid md:grid-cols-3 gap-4">
+              <div class="card p-5">
+                <div class="subtle">Faturamento (mês)</div>
+                <div class="text-2xl font-semibold">R$ <span id="kpiRevenueMonth">0,00</span></div>
+              </div>
+              <div class="card p-5">
+                <div class="subtle">Agendamentos (hoje)</div>
+                <div class="text-2xl font-semibold"><span id="kpiAptsToday">0</span></div>
+              </div>
+              <div class="card p-5">
+                <div class="subtle">Clientes ativos</div>
+                <div class="text-2xl font-semibold"><span id="kpiActiveClients">0</span></div>
+              </div>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-4">
+              <div class="card p-5 md:col-span-2">
+                <div class="flex items-center justify-between mb-3">
+                  <h3 class="section-title m-0">Agendamentos de hoje</h3>
+                  <button class="btn btn-outline" id="btnNewApt">Novo</button>
+                </div>
+                <div class="overflow-x-auto">
+                  <table class="w-full text-sm">
+                    <thead><tr class="text-left border-b">
+                      <th class="py-2 pr-2">Hora</th>
+                      <th class="py-2 pr-2">Cliente</th>
+                      <th class="py-2 pr-2">Serviço</th>
+                      <th class="py-2 pr-2">Profissional</th>
+                      <th class="py-2 pr-2">Status</th>
+                      <th class="py-2 pr-2"></th>
+                    </tr></thead>
+                    <tbody id="tblToday"></tbody>
+                  </table>
+                </div>
+              </div>
+              <div class="card p-5">
+                <div class="flex items-center justify-between mb-3">
+                  <h3 class="section-title m-0">Insights da IA</h3>
+                  <button id="btnRefreshInsights" class="btn btn-outline text-xs">Atualizar</button>
+                </div>
+                <ul id="insightsList" class="list-disc pl-5 text-sm space-y-2">
+                  <li>Conecte a IA para sugestões automáticas.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- CALENDAR -->
+          <div id="view-calendar" class="hidden space-y-4">
+            <div class="card p-4">
+              <div id="calendar"></div>
+            </div>
+          </div>
+
+          <!-- SERVICES -->
+          <div id="view-services" class="hidden space-y-4">
+            <div class="card p-4">
+              <div class="flex items-center justify-between">
+                <h3 class="section-title m-0">Serviços</h3>
+                <button id="btnAddService" class="btn btn-primary">Adicionar serviço</button>
+              </div>
+              <div class="mt-3 overflow-x-auto">
+                <table class="w-full text-sm">
+                  <thead><tr class="text-left border-b">
+                    <th class="py-2 pr-2">Nome</th>
+                    <th class="py-2 pr-2">Preço</th>
+                    <th class="py-2 pr-2">Duração</th>
+                    <th class="py-2 pr-2">Agendamento Online</th>
+                    <th class="py-2 pr-2"></th>
+                  </tr></thead>
+                  <tbody id="tblServices"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="card p-4">
+              <h4 class="font-semibold mb-2">Receita do Serviço</h4>
+              <div class="grid md:grid-cols-3 gap-3">
+                <select id="recipeService" class="input"></select>
+                <select id="recipeProduct" class="input"></select>
+                <input id="recipeQty" class="input" type="number" step="0.001" placeholder="Qtd/serviço" />
+              </div>
+              <div class="mt-2 flex gap-2">
+                <button id="btnAddRecipe" class="btn btn-outline">Adicionar Produto</button>
+                <button id="btnLoadRecipe" class="btn btn-outline">Recarregar</button>
+              </div>
+              <div class="mt-3 overflow-x-auto">
+                <table class="w-full text-sm">
+                  <thead><tr class="text-left border-b">
+                    <th class="py-2 pr-2">Produto</th>
+                    <th class="py-2 pr-2">Quantidade</th>
+                    <th class="py-2 pr-2"></th>
+                  </tr></thead>
+                  <tbody id="tblRecipe"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- CLIENTS -->
+          <div id="view-clients" class="hidden space-y-4">
+            <div class="card p-4">
+              <div class="flex items-center justify-between">
+                <h3 class="section-title m-0">Clientes</h3>
+                <div class="flex gap-2">
+                  <input id="clientSearch" class="input" placeholder="Buscar por nome, email ou telefone" />
+                  <button id="btnAddClient" class="btn btn-primary">Novo cliente</button>
+                </div>
+              </div>
+              <div class="mt-3 overflow-x-auto">
+                <table class="w-full text-sm">
+                  <thead><tr class="text-left border-b">
+                    <th class="py-2 pr-2">Nome</th>
+                    <th class="py-2 pr-2">Contato</th>
+                    <th class="py-2 pr-2">Último atendimento</th>
+                    <th class="py-2 pr-2"></th>
+                  </tr></thead>
+                  <tbody id="tblClients"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="card p-4">
+              <h4 class="font-semibold mb-2">Perfil do Cliente</h4>
+              <div class="grid md:grid-cols-3 gap-3">
+                <input id="cliId" class="input hidden" />
+                <input id="cliName" class="input" placeholder="Nome completo" />
+                <input id="cliPhone" class="input" placeholder="Telefone" />
+                <input id="cliEmail" class="input" placeholder="Email" />
+              </div>
+              <div class="mt-3">
+                <label class="label">Observações técnicas (fórmulas, alergias, preferências)</label>
+                <textarea id="cliNotes" rows="4" class="input"></textarea>
+              </div>
+              <div class="mt-3 flex gap-2">
+                <button id="btnSaveClient" class="btn btn-primary">Salvar</button>
+                <button id="btnNewPhoto" class="btn btn-outline">Adicionar Foto</button>
+                <input type="file" id="cliPhotoInput" accept="image/*" class="hidden" />
+              </div>
+              <div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3" id="cliPhotos"></div>
+            </div>
+          </div>
+
+          <!-- INVENTORY -->
+          <div id="view-inventory" class="hidden space-y-4">
+            <div class="card p-4">
+              <div class="flex items-center justify-between">
+                <h3 class="section-title m-0">Estoque</h3>
+                <div class="flex items-center gap-2">
+                  <div id="qrReader" class="hidden w-64 h-64 border rounded"></div>
+                  <button id="btnScan" class="btn btn-outline">Escanear código de barras</button>
+                </div>
+              </div>
+              <div class="mt-3 grid md:grid-cols-5 gap-3">
+                <input id="prodName" class="input md:col-span-2" placeholder="Nome do produto" />
+                <input id="prodSku" class="input" placeholder="SKU" />
+                <input id="prodBarcode" class="input" placeholder="Código de barras" />
+                <input id="prodPrice" class="input" type="number" step="0.01" placeholder="Preço" />
+                <input id="prodStock" class="input" type="number" step="0.001" placeholder="Estoque" />
+                <select id="prodUnit" class="input">
+                  <option value="un">un</option>
+                  <option value="ml">ml</option>
+                  <option value="g">g</option>
+                </select>
+                <textarea id="prodDesc" class="input md:col-span-2" rows="2" placeholder="Descrição do produto"></textarea>
+                <div class="md:col-span-5 flex gap-2">
+                  <button id="btnAIProdDesc" class="btn btn-outline">Gerar descrição (IA)</button>
+                  <button id="btnSaveProduct" class="btn btn-primary">Salvar produto</button>
+                  <input id="prodSearch" class="input flex-1" placeholder="Buscar produtos..." />
+                </div>
+              </div>
+              <div class="mt-3 overflow-x-auto">
+                <table class="w-full text-sm">
+                  <thead><tr class="text-left border-b">
+                    <th class="py-2 pr-2">Nome</th>
+                    <th class="py-2 pr-2">SKU</th>
+                    <th class="py-2 pr-2">Código</th>
+                    <th class="py-2 pr-2">Preço</th>
+                    <th class="py-2 pr-2">Estoque</th>
+                    <th class="py-2 pr-2">Unid</th>
+                    <th class="py-2 pr-2"></th>
+                  </tr></thead>
+                  <tbody id="tblProducts"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- PAYMENTS -->
+          <div id="view-payments" class="hidden space-y-4">
+            <div class="card p-4">
+              <div class="flex items-center justify-between">
+                <h3 class="section-title m-0">Pagamentos (Mercado Pago)</h3>
+                <div class="subtle">STUB cliente → chama <code>/api/mp/preference</code> (serverless) </div>
+              </div>
+              <div class="grid md:grid-cols-4 gap-3 mt-3">
+                <input id="payClient" class="input" placeholder="Cliente (nome)" />
+                <input id="payDesc" class="input" placeholder="Descrição (ex.: Corte + Escova)" />
+                <input id="payAmount" class="input" type="number" step="0.01" placeholder="Valor (R$)" />
+                <button id="btnCreatePayment" class="btn btn-primary">Gerar pagamento</button>
+              </div>
+              <div class="mt-4 grid md:grid-cols-2 gap-4">
+                <div class="card p-4">
+                  <div class="font-medium">Link / QR</div>
+                  <div id="payLinkWrap" class="mt-2 text-sm"></div>
+                  <canvas id="qrCanvas" class="mt-3 border rounded"></canvas>
+                </div>
+                <div class="card p-4">
+                  <div class="font-medium">Pagamentos recentes</div>
+                  <div class="subtle">Atualiza em tempo real via Supabase Realtime (tabela <code>payments</code>)</div>
+                  <div class="mt-2 overflow-x-auto">
+                    <table class="w-full text-sm">
+                      <thead><tr class="text-left border-b">
+                        <th class="py-2 pr-2">Quando</th>
+                        <th class="py-2 pr-2">Valor</th>
+                        <th class="py-2 pr-2">Status</th>
+                        <th class="py-2 pr-2">Ref</th>
+                      </tr></thead>
+                      <tbody id="tblPayments"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SETTINGS -->
+          <div id="view-settings" class="hidden space-y-4">
+            <div class="card p-4">
+              <div class="flex items-center justify-between">
+                <h3 class="section-title m-0">Configurações do Salão</h3>
+                <button id="btnSaveSettings" class="btn btn-primary">Salvar</button>
+              </div>
+              <div class="grid md:grid-cols-3 gap-3 mt-3">
+                <input id="cfgName" class="input" placeholder="Nome do salão" />
+                <input id="cfgSlug" class="input" placeholder="Slug público" />
+                <input id="cfgAddress" class="input" placeholder="Endereço" />
+              </div>
+              <div class="grid md:grid-cols-3 gap-3 mt-3">
+                <div>
+                  <label class="label">Cor primária</label>
+                  <input type="color" id="cfgPrimary" class="w-full h-10 rounded" />
+                </div>
+                <div>
+                  <label class="label">Fundo (surface)</label>
+                  <input type="color" id="cfgSurface" class="w-full h-10 rounded" />
+                </div>
+                <div>
+                  <label class="label">Texto</label>
+                  <input type="color" id="cfgText" class="w-full h-10 rounded" />
+                </div>
+              </div>
+              <div class="mt-3 flex items-center gap-3">
+                <input type="file" id="cfgLogo" accept="image/*" />
+                <img id="cfgLogoPreview" class="w-16 h-16 object-contain rounded border" />
+              </div>
+            </div>
+
+            <div class="card p-4">
+              <h3 class="section-title m-0">Ajuda Rápida</h3>
+              <details class="mt-2">
+                <summary class="cursor-pointer font-medium">Como configurar Mercado Pago (resumo)</summary>
+                <div class="mt-2 text-sm space-y-2">
+                  <p>1) Crie uma rota serverless em <code>/api/mp/preference</code> no Vercel. Nela você usará seu Access Token secreto do Mercado Pago para criar uma <em>preference</em> e retornar o <code>init_point</code> ao front-end.</p>
+                  <p>2) Crie outra rota <code>/api/mp/webhook</code> e cadastre a URL no app Mercado Pago. Essa rota atualizará a tabela <code>payments</code> no Supabase.</p>
+                  <p>3) No Supabase, use RLS para garantir que cada pagamento só apareça ao respectivo salão (filtre por <code>salon_id</code>).</p>
+                </div>
+              </details>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PUBLIC BOOKING (MVP) -->
+    <section id="publicSection" class="hidden">
+      <div class="max-w-3xl mx-auto">
+        <div class="text-center mb-6">
+          <h2 class="text-2xl font-bold" id="pubSalonName">Salão</h2>
+          <p class="subtle">Escolha um serviço e horário</p>
+        </div>
+        <div class="card p-5 space-y-4">
+          <div class="grid md:grid-cols-3 gap-3">
+            <select id="pubService" class="input"></select>
+            <input id="pubName" class="input" placeholder="Seu nome" />
+            <input id="pubPhone" class="input" placeholder="Telefone" />
+          </div>
+          <div class="grid md:grid-cols-3 gap-3">
+            <input id="pubDate" class="input" type="date" />
+            <input id="pubTime" class="input" type="time" />
+            <input id="pubProfessional" class="input" placeholder="Profissional (opcional)" />
+          </div>
+          <div class="flex items-center justify-end">
+            <button id="btnPublicBook" class="btn btn-primary">Confirmar Agendamento</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- MODAL: Novo Agendamento -->
+  <div class="modal-backdrop" id="modalBackdrop">
+    <div class="modal card p-4" id="modalNewApt">
+      <div class="flex items-center justify-between">
+        <h3 class="section-title m-0">Novo agendamento</h3>
+        <button id="btnCloseModal" title="Fechar">✖</button>
+      </div>
+      <div class="grid md:grid-cols-2 gap-3 mt-2">
+        <input id="aptClient" class="input" placeholder="Cliente" list="clientsList" />
+        <datalist id="clientsList"></datalist>
+        <select id="aptService" class="input"></select>
+        <input id="aptProfessional" class="input" placeholder="Profissional" />
+        <input id="aptStart" class="input" type="datetime-local" />
+        <input id="aptEnd" class="input" type="datetime-local" />
+      </div>
+      <div class="mt-3 flex items-center justify-end gap-2">
+        <button id="btnSaveApt" class="btn btn-primary">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ======================================================================
+    //  ENV (edite aqui com seus valores)
+    // ======================================================================
+    window.ENV = {
+      SUPABASE_URL: "https://lkuzedzomsjvuqzdjmce.supabase.co",
+      SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxrdXplZHpvbXNqdnVxemRqbWNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgyMTYyMzQsImV4cCI6MjA3Mzc5MjIzNH0.ZbttIozU7VlTpravG2ZI4RtaPI1QNdizWTx5W1mpTjI",
+      GEMINI_API_KEY: "AIzaSyDc2hXz3w_slDRgIGzP3Mey5iwWWqc9nrE",     // opcional (para insights/descrição de produtos)
+      API_BASE_URL: "",       // ex.: "https://seu-projeto.vercel.app"; se vazio, usa relativo
+    };
+
+    // ======================================================================
+    //  Helpers
+    // ======================================================================
+    const $ = (sel) => document.querySelector(sel);
+    const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+    const toaster = $("#toaster");
+    function toast(msg, type="info") {
+      const el = document.createElement("div");
+      el.className = "toast " + (type === "error" ? "error" : type === "success" ? "success" : "");
+      el.textContent = msg;
+      toaster.appendChild(el);
+      setTimeout(() => el.remove(), 4200);
+    }
+    function money(n) {
+      try { return Number(n).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); }
+      catch { return "R$ " + n; }
+    }
+    function guid() { return crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2); }
+    function setTheme({primary, surface, text}) {
+      if (primary) document.documentElement.style.setProperty("--primary", primary);
+      if (surface) document.documentElement.style.setProperty("--surface", surface);
+      if (text) document.documentElement.style.setProperty("--text", text);
+      $("#theme-color-meta")?.setAttribute("content", primary || "#7c3aed");
+      // Atualiza prévia
+      const tp = $("#themePreview");
+      if (tp) {
+        tp.style.background = getComputedStyle(document.documentElement).getPropertyValue("--surface");
+        tp.style.color = getComputedStyle(document.documentElement).getPropertyValue("--text");
+      }
+    }
+    function luminance(hex) {
+      // #rrggbb -> sRGB luminance
+      const c = hex.replace("#","");
+      const r = parseInt(c.substr(0,2),16)/255;
+      const g = parseInt(c.substr(2,2),16)/255;
+      const b = parseInt(c.substr(4,2),16)/255;
+      const srgb = [r,g,b].map(v => (v <= 0.03928) ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4));
+      return 0.2126*srgb[0] + 0.7152*srgb[1] + 0.0722*srgb[2];
+    }
+    function contrastRatio(hex1, hex2) {
+      const L1 = luminance(hex1);
+      const L2 = luminance(hex2);
+      const lighter = Math.max(L1, L2);
+      const darker = Math.min(L1, L2);
+      return (lighter + 0.05) / (darker + 0.05);
+    }
+    function updateContrastBadge() {
+      const p = $("#colorPrimary").value || "#7c3aed";
+      const s = $("#colorSurface").value || "#ffffff";
+      const t = $("#colorText").value || "#0f172a";
+      // mostra pior contraste entre (primaria x surface/texto)
+      const c1 = contrastRatio(p, s);
+      const c2 = contrastRatio(t, s);
+      const minC = Math.min(c1, c2);
+      const badge = $("#contrastBadge");
+      badge.textContent = "Contraste: " + minC.toFixed(2) + (minC >= 4.5 ? " ✅ AA" : (minC >= 3 ? " ⚠️ AA (texto grande)" : " ❌"));
+    }
+    function serializeOpeningHours(open, close) {
+      // Representa horário padrão em todos os dias
+      const days = ["mon","tue","wed","thu","fri","sat","sun"];
+      const obj = {};
+      for (const d of days) obj[d] = [[open, close]];
+      return obj;
+    }
+    function buildApiUrl(path) {
+      if (window.ENV.API_BASE_URL) return window.ENV.API_BASE_URL.replace(/\/$/,"") + path;
+      return path; // relativo
+    }
+
+    // ======================================================================
+    //  Supabase Client
+    // ======================================================================
+    const supabase = window.supabase.createClient(ENV.SUPABASE_URL, ENV.SUPABASE_ANON_KEY, {
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+    });
+
+    let currentUser = null;
+    let currentSalon = null;
+    let calendar = null;
+    let html5QrCode = null;
+
+    // ======================================================================
+    //  Router (hash)
+    // ======================================================================
+    function route() {
+      const hash = location.hash || "#/login";
+      const [_, path, arg1] = hash.split("/"); // '', 'p'/'dashboard'..., slug?
+      // Esconde tudo
+      ["authSection","onboardingSection","appSection","publicSection"].forEach(id => $("#"+id).classList.add("hidden"));
+      $("#topbar").classList.add("hidden");
+
+      if (path === "login") {
+        $("#authSection").classList.remove("hidden");
+      } else if (path === "p") {
+        $("#publicSection").classList.remove("hidden");
+        loadPublic(arg1);
+      } else {
+        // áreas protegidas
+        if (!currentUser) { location.hash = "#/login"; return; }
+        $("#topbar").classList.remove("hidden");
+        $("#appSection").classList.remove("hidden");
+        // verifica onboarding
+        if (!currentSalon) { showOnboarding(); return; }
+        showView(path || "dashboard");
+      }
+    }
+    window.addEventListener("hashchange", route);
+
+    function showView(view) {
+      $$("#appSection [id^='view-']").forEach(el => el.classList.add("hidden"));
+      const el = $("#view-" + view);
+      if (el) {
+        el.classList.remove("hidden");
+        if (view === "calendar") initCalendar();
+        if (view === "dashboard") refreshDashboard();
+        if (view === "services") refreshServices();
+        if (view === "clients") refreshClients();
+        if (view === "inventory") refreshProducts();
+        if (view === "payments") refreshPayments();
+        if (view === "settings") loadSettings();
+      } else {
+        $("#view-dashboard").classList.remove("hidden");
+      }
+    }
+
+    // ======================================================================
+    //  Auth
+    // ======================================================================
+    $("#tabLogin").addEventListener("click", () => {
+      $("#loginForm").classList.remove("hidden");
+      $("#signupForm").classList.add("hidden");
+      $("#tabLogin").classList.add("btn-primary"); $("#tabLogin").classList.remove("btn-outline");
+      $("#tabSignup").classList.remove("btn-primary"); $("#tabSignup").classList.add("btn-outline");
+    });
+    $("#tabSignup").addEventListener("click", () => {
+      $("#signupForm").classList.remove("hidden");
+      $("#loginForm").classList.add("hidden");
+      $("#tabSignup").classList.add("btn-primary"); $("#tabSignup").classList.remove("btn-outline");
+      $("#tabLogin").classList.remove("btn-primary"); $("#tabLogin").classList.add("btn-outline");
+    });
+
+    $("#btnLogin").addEventListener("click", async () => {
+      const email = $("#loginEmail").value.trim();
+      const pass = $("#loginPass").value;
+      const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
+      if (error) return toast(error.message, "error");
+      toast("Bem-vindo!");
+      await fetchSession();
+      location.hash = "#/dashboard";
+    });
+    $("#btnReset").addEventListener("click", async () => {
+      const email = $("#loginEmail").value.trim();
+      if (!email) return toast("Informe seu email para recuperar a senha.");
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: location.href });
+      if (error) return toast(error.message, "error");
+      toast("Email de recuperação enviado.", "success");
+    });
+    $("#btnSignup").addEventListener("click", async () => {
+      const email = $("#signupEmail").value.trim();
+      const pass = $("#signupPass").value;
+      const pass2 = $("#signupPass2").value;
+      if (!email || pass.length < 6 || pass !== pass2) return toast("Verifique email e senhas.");
+      const { error } = await supabase.auth.signUp({ email, password: pass });
+      if (error) return toast(error.message, "error");
+      toast("Conta criada! Entre para continuar.", "success");
+      $("#tabLogin").click();
+    });
+    $("#btnLogout").addEventListener("click", async () => {
+      await supabase.auth.signOut();
+      currentUser = null; currentSalon = null;
+      location.hash = "#/login";
+    });
+    async function fetchSession() {
+      const { data: { user } } = await supabase.auth.getUser();
+      currentUser = user;
+      return user;
+    }
+    supabase.auth.onAuthStateChange(async (_event, session) => {
+      currentUser = session?.user ?? null;
+      if (currentUser) {
+        await loadSalon();
+        $("#salonNameTop").textContent = currentSalon?.name || "Painel do salão";
+        route();
+      }
+    });
+
+    // ======================================================================
+    //  Onboarding
+    // ======================================================================
+    $("#obSlug").addEventListener("input", () => $("#slugPreview").textContent = $("#obSlug").value || "seu-salao");
+
+    ["colorPrimary", "colorSurface", "colorText"].forEach(id => {
+      $("#"+id).addEventListener("input", () => {
+        setTheme({ primary: $("#colorPrimary").value, surface: $("#colorSurface").value, text: $("#colorText").value });
+        updateContrastBadge();
+      });
+    });
+
+    $("#btnExtractPalette").addEventListener("click", async () => {
+      const file = $("#obLogo").files?.[0];
+      if (!file) return toast("Selecione um arquivo de logo.");
+      const img = $("#logoPreview");
+      img.src = URL.createObjectURL(file);
+      img.onload = () => {
+        Vibrant.from(img).getPalette((err, palette) => {
+          if (err) return toast("Falha ao extrair paleta", "error");
+          const vibrant = palette.Vibrant?.hex || "#7c3aed";
+          const light = palette.LightVibrant?.hex || "#ffffff";
+          const darkText = "#0f172a";
+          $("#colorPrimary").value = vibrant;
+          $("#colorSurface").value = light;
+          $("#colorText").value = darkText;
+          setTheme({ primary: vibrant, surface: light, text: darkText });
+          updateContrastBadge();
+          toast("Paleta sugerida a partir do logo.", "success");
+        });
+      };
+    });
+
+    function showOnboarding() {
+      $("#onboardingSection").classList.remove("hidden");
+      $("#appSection").classList.add("hidden");
+      $("#topbar").classList.add("hidden");
+    }
+
+    $("#btnSkipOnboarding").addEventListener("click", () => {
+      location.hash = "#/dashboard";
+    });
+
+    $("#btnSaveOnboarding").addEventListener("click", async () => {
+      if (!currentUser) return;
+      const name = $("#obName").value.trim();
+      const slug = $("#obSlug").value.trim();
+      const address = $("#obAddress").value.trim();
+      const open = $("#obOpen").value || "09:00";
+      const close = $("#obClose").value || "18:00";
+      if (!name || !slug) return toast("Informe nome e slug.");
+      // upload logo (opcional)
+      let logo_url = null;
+      const file = $("#obLogo").files?.[0];
+      if (file) {
+        const salonTempId = guid(); // antes de criar o salão
+        const path = `logos/${salonTempId}.png`;
+        const { error: sErr } = await supabase.storage.from("salon-logos").upload(path, file, { upsert: true });
+        if (sErr) toast("Falha ao enviar logo (você pode enviar depois em Configurações).", "error");
+        else {
+          const { data: pub } = supabase.storage.from("salon-logos").getPublicUrl(path);
+          logo_url = pub?.publicUrl || null;
+        }
+      }
+      const theme = {
+        primary: $("#colorPrimary").value || "#7c3aed",
+        surface: $("#colorSurface").value || "#ffffff",
+        text: $("#colorText").value || "#0f172a"
+      };
+      // cria salão
+      const { data, error } = await supabase.from("salons").insert({
+        owner_id: currentUser.id, name, slug, address,
+        opening_hours: serializeOpeningHours(open, close),
+        logo_url, theme
+      }).select().single();
+      if (error) return toast(error.message, "error");
+      currentSalon = data;
+      setTheme(theme);
+      $("#salonNameTop").textContent = currentSalon.name;
+      toast("Onboarding concluído!", "success");
+      location.hash = "#/dashboard";
+    });
+
+    async function loadSalon() {
+      if (!currentUser) return;
+      const { data, error } = await supabase.from("salons").select("*").eq("owner_id", currentUser.id).limit(1).single();
+      if (error && error.code !== "PGRST116") { // not found
+        toast(error.message, "error"); return;
+      }
+      currentSalon = data || null;
+      if (currentSalon?.theme) setTheme(currentSalon.theme);
+      if (!currentSalon) showOnboarding();
+    }
+
+    // ======================================================================
+    //  Dashboard
+    // ======================================================================
+    async function refreshDashboard() {
+      if (!currentSalon) return;
+      $("#salonNameTop").textContent = currentSalon.name;
+      // KPIs
+      const startMonth = dayjs().startOf("month").toISOString();
+      const endMonth = dayjs().endOf("month").toISOString();
+      const { data: pays } = await supabase.from("payments")
+        .select("amount, status").eq("salon_id", currentSalon.id)
+        .gte("created_at", startMonth).lte("created_at", endMonth);
+      const revenue = (pays || []).filter(p => p.status === "approved").reduce((s, p) => s + Number(p.amount), 0);
+      $("#kpiRevenueMonth").textContent = revenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 });
+
+      const startDay = dayjs().startOf("day").toISOString();
+      const endDay = dayjs().endOf("day").toISOString();
+      const { data: apts } = await supabase.from("appointments")
+        .select("*, clients(full_name), services(name)")
+        .eq("salon_id", currentSalon.id)
+        .gte("start_at", startDay).lte("start_at", endDay);
+      $("#kpiAptsToday").textContent = (apts || []).length;
+
+      const { count: clientsCount } = await supabase.from("clients")
+        .select("*", { count: "exact", head: true })
+        .eq("salon_id", currentSalon.id);
+      $("#kpiActiveClients").textContent = clientsCount || 0;
+
+      // Tabela de hoje
+      const tbody = $("#tblToday");
+      tbody.innerHTML = "";
+      (apts || []).sort((a,b) => new Date(a.start_at) - new Date(b.start_at)).forEach(a => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="py-2 pr-2">${dayjs(a.start_at).format("HH:mm")}</td>
+          <td class="py-2 pr-2">${a.clients?.full_name || "—"}</td>
+          <td class="py-2 pr-2">${a.services?.name || "—"}</td>
+          <td class="py-2 pr-2">${a.professional || "—"}</td>
+          <td class="py-2 pr-2"><span class="chip">${a.status}</span></td>
+          <td class="py-2 pr-2">
+            <button class="text-xs link" data-done="${a.id}">Concluir</button> ·
+            <button class="text-xs text-red-600 underline" data-cancel="${a.id}">Cancelar</button>
+          </td>`;
+        tbody.appendChild(tr);
+      });
+      // Ações concluir/cancelar
+      tbody.querySelectorAll("button[data-done]").forEach(btn => {
+        btn.addEventListener("click", () => concludeAppointment(btn.dataset.done));
+      });
+      tbody.querySelectorAll("button[data-cancel]").forEach(btn => {
+        btn.addEventListener("click", () => cancelAppointment(btn.dataset.cancel));
+      });
+    }
+
+    async function concludeAppointment(aptId) {
+      const { data: apt, error } = await supabase.from("appointments").select("*").eq("id", aptId).single();
+      if (error) return toast("Não foi possível carregar o agendamento.", "error");
+      // Dedução de estoque pela Receita do Serviço
+      if (apt.service_id) {
+        const { data: recipe } = await supabase.from("service_products").select("*, products(id,stock)").eq("salon_id", currentSalon.id).eq("service_id", apt.service_id);
+        for (const r of (recipe || [])) {
+          const newStock = Number(r.products.stock) - Number(r.qty_per_service || 0);
+          await supabase.from("products").update({ stock: newStock }).eq("id", r.product_id);
+          await supabase.from("stock_movements").insert({
+            salon_id: currentSalon.id, product_id: r.product_id, delta: -Number(r.qty_per_service || 0), reason: "recipe", ref_id: apt.id
+          });
+        }
+      }
+      await supabase.from("appointments").update({ status: "done" }).eq("id", aptId);
+      toast("Agendamento concluído. Estoque atualizado.", "success");
+      refreshDashboard();
+    }
+
+    async function cancelAppointment(aptId) {
+      await supabase.from("appointments").update({ status: "canceled" }).eq("id", aptId);
+      toast("Agendamento cancelado.", "success");
+      refreshDashboard();
+    }
+
+    // ======================================================================
+    //  Calendar
+    // ======================================================================
+    async function initCalendar() {
+      if (calendar) { calendar.render(); return; }
+      const calEl = $("#calendar");
+      calendar = new FullCalendar.Calendar(calEl, {
+        initialView: "timeGridWeek",
+        selectable: true,
+        editable: true,
+        headerToolbar: { left: "prev,next today", center: "title", right: "dayGridMonth,timeGridWeek,timeGridDay" },
+        select: ({ start, end }) => openAptModal({ start, end }),
+        eventDrop: async (info) => {
+          const id = info.event.id;
+          await supabase.from("appointments").update({ start_at: info.event.start, end_at: info.event.end }).eq("id", id);
+          toast("Agendamento atualizado.", "success");
+        },
+        eventResize: async (info) => {
+          const id = info.event.id;
+          await supabase.from("appointments").update({ end_at: info.event.end }).eq("id", id);
+          toast("Duração atualizada.", "success");
+        },
+        eventClick: (info) => {
+          // Abre modal com dados
+          const ev = info.event.extendedProps;
+          openAptModal({
+            id: info.event.id,
+            start: info.event.start, end: info.event.end,
+            client_name: ev.client_name, client_id: ev.client_id,
+            service_id: ev.service_id, professional: ev.professional
+          });
+        }
+      });
+      calendar.render();
+      await loadCalendarEvents();
+      // Realtime
+      supabase.channel('any')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments', filter: `salon_id=eq.${currentSalon.id}` }, loadCalendarEvents)
+        .subscribe();
+    }
+
+    async function loadCalendarEvents() {
+      if (!currentSalon) return;
+      const start = dayjs(calendar.view.activeStart).toISOString();
+      const end = dayjs(calendar.view.activeEnd).toISOString();
+      const { data, error } = await supabase.from("appointments")
+        .select("*, clients(full_name), services(name)").eq("salon_id", currentSalon.id)
+        .gte("start_at", start).lte("start_at", end);
+      if (error) return toast(error.message, "error");
+      const events = (data || []).map(a => ({
+        id: a.id, title: (a.clients?.full_name || "—") + " • " + (a.services?.name || ""),
+        start: a.start_at, end: a.end_at,
+        extendedProps: {
+          client_name: a.clients?.full_name, client_id: a.client_id,
+          service_id: a.service_id, professional: a.professional
+        }
+      }));
+      calendar.removeAllEvents();
+      calendar.addEventSource(events);
+    }
+
+    $("#btnNewApt").addEventListener("click", () => openAptModal());
+
+    function openAptModal(preset={}) {
+      $("#modalBackdrop").classList.add("show");
+      const now = dayjs().minute(0).second(0).millisecond(0);
+      $("#aptStart").value = dayjs(preset.start || now.add(1,'hour')).format("YYYY-MM-DDTHH:mm");
+      $("#aptEnd").value = dayjs(preset.end || now.add(2,'hour')).format("YYYY-MM-DDTHH:mm");
+      $("#aptProfessional").value = preset.professional || "";
+      fillServicesSelect("#aptService");
+      fillClientsDatalist();
+      $("#aptClient").value = preset.client_name || "";
+      $("#aptService").value = preset.service_id || "";
+      $("#btnSaveApt").onclick = () => saveAppointment(preset.id);
+    }
+    $("#btnCloseModal").addEventListener("click", () => $("#modalBackdrop").classList.remove("show"));
+
+    async function saveAppointment(id=null) {
+      if (!currentSalon) return;
+      const clientName = $("#aptClient").value.trim();
+      const serviceId = $("#aptService").value;
+      const prof = $("#aptProfessional").value.trim();
+      const start = $("#aptStart").value;
+      const end = $("#aptEnd").value;
+      if (!clientName || !serviceId || !start || !end) return toast("Preencha cliente, serviço e horários.");
+      // garante cliente existente (auto-cria se não houver)
+      let client = null;
+      {
+        const { data } = await supabase.from("clients").select("*").eq("salon_id", currentSalon.id).ilike("full_name", clientName).limit(1);
+        client = data?.[0] || null;
+        if (!client) {
+          const ins = await supabase.from("clients").insert({ salon_id: currentSalon.id, full_name: clientName }).select().single();
+          client = ins.data;
+        }
+      }
+      const payload = {
+        salon_id: currentSalon.id, client_id: client.id, service_id: serviceId,
+        professional: prof, start_at: start, end_at: end, status: "scheduled", created_by: currentUser.id
+      };
+      if (id) await supabase.from("appointments").update(payload).eq("id", id);
+      else await supabase.from("appointments").insert(payload);
+      toast("Agendamento salvo.", "success");
+      $("#modalBackdrop").classList.remove("show");
+      loadCalendarEvents();
+      refreshDashboard();
+    }
+
+    async function fillServicesSelect(sel) {
+      const { data } = await supabase.from("services").select("*").eq("salon_id", currentSalon.id).order("name");
+      const s = $(sel);
+      s.innerHTML = '<option value="">Selecione...</option>' + (data || []).map(d => `<option value="${d.id}">${d.name} (${d.duration_minutes}min)</option>`).join("");
+      // também carrega para receita
+      $("#recipeService").innerHTML = '<option value="">Selecione…</option>' + (data || []).map(d => `<option value="${d.id}">${d.name}</option>`).join("");
+    }
+    async function fillClientsDatalist() {
+      const { data } = await supabase.from("clients").select("*").eq("salon_id", currentSalon.id).order("full_name");
+      const dl = $("#clientsList");
+      dl.innerHTML = (data || []).map(c => `<option value="${c.full_name}">`).join("");
+      const sel = $("#aptClient");
+      sel.setAttribute("list","clientsList");
+      // lista para payments
+      $("#payClient").setAttribute("list","clientsList");
+    }
+
+    // ======================================================================
+    //  Services CRUD + Recipe
+    // ======================================================================
+    $("#btnAddService").addEventListener("click", async () => {
+      const name = prompt("Nome do serviço:");
+      if (!name) return;
+      const price = Number(prompt("Preço (R$):", "100")) || 0;
+      const duration = Number(prompt("Duração (min):", "60")) || 60;
+      const online = confirm("Disponível para agendamento online?");
+      await supabase.from("services").insert({
+        salon_id: currentSalon.id, name, price, duration_minutes: duration, online_bookable: online
+      });
+      toast("Serviço adicionado.", "success");
+      refreshServices();
+    });
+
+    async function refreshServices() {
+      if (!currentSalon) return;
+      const { data } = await supabase.from("services").select("*").eq("salon_id", currentSalon.id).order("name");
+      const tbody = $("#tblServices");
+      tbody.innerHTML = "";
+      (data || []).forEach(s => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="py-2 pr-2">${s.name}</td>
+          <td class="py-2 pr-2">${money(s.price)}</td>
+          <td class="py-2 pr-2">${s.duration_minutes}min</td>
+          <td class="py-2 pr-2">${s.online_bookable ? "Sim":"Não"}</td>
+          <td class="py-2 pr-2">
+            <button class="text-xs link" data-edit="${s.id}">Editar</button> ·
+            <button class="text-xs text-red-600 underline" data-del="${s.id}">Excluir</button>
+          </td>`;
+        tbody.appendChild(tr);
+      });
+      // selecionar produtos para receita
+      const { data: products } = await supabase.from("products").select("*").eq("salon_id", currentSalon.id).order("name");
+      $("#recipeProduct").innerHTML = '<option value="">Selecione…</option>' + (products || []).map(p => `<option value="${p.id}">${p.name}</option>`).join("");
+
+      // actions
+      tbody.querySelectorAll("button[data-edit]").forEach(btn => btn.addEventListener("click", () => editService(btn.dataset.edit)));
+      tbody.querySelectorAll("button[data-del]").forEach(btn => btn.addEventListener("click", () => deleteService(btn.dataset.del)));
+    }
+
+    async function editService(id) {
+      const { data: s } = await supabase.from("services").select("*").eq("id", id).single();
+      const name = prompt("Nome do serviço:", s.name) || s.name;
+      const price = Number(prompt("Preço (R$):", s.price)) || s.price;
+      const duration = Number(prompt("Duração (min):", s.duration_minutes)) || s.duration_minutes;
+      const online = confirm("Disponível para agendamento online? (OK=Sim / Cancel=Não)") ? true : false;
+      await supabase.from("services").update({
+        name, price, duration_minutes: duration, online_bookable: online
+      }).eq("id", id);
+      toast("Serviço atualizado.", "success");
+      refreshServices();
+    }
+    async function deleteService(id) {
+      if (!confirm("Excluir serviço?")) return;
+      await supabase.from("services").delete().eq("id", id);
+      toast("Serviço excluído.", "success");
+      refreshServices();
+    }
+
+    $("#btnAddRecipe").addEventListener("click", async () => {
+      const s = $("#recipeService").value; const p = $("#recipeProduct").value;
+      const q = Number($("#recipeQty").value);
+      if (!s || !p || !q) return toast("Selecione serviço, produto e quantidade.");
+      await supabase.from("service_products").insert({ salon_id: currentSalon.id, service_id: s, product_id: p, qty_per_service: q });
+      toast("Produto adicionado à receita.", "success");
+      loadRecipe();
+    });
+    $("#btnLoadRecipe").addEventListener("click", loadRecipe);
+    async function loadRecipe() {
+      const s = $("#recipeService").value;
+      if (!s) return;
+      const { data } = await supabase.from("service_products").select("*, products(name)").eq("salon_id", currentSalon.id).eq("service_id", s);
+      const tbody = $("#tblRecipe"); tbody.innerHTML = "";
+      (data || []).forEach(r => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td class="py-2 pr-2">${r.products?.name || "—"}</td>
+                        <td class="py-2 pr-2">${r.qty_per_service}</td>
+                        <td class="py-2 pr-2"><button class="text-xs text-red-600 underline" data-delr="${r.id}">Remover</button></td>`;
+        tbody.appendChild(tr);
+      });
+      tbody.querySelectorAll("button[data-delr]").forEach(btn => btn.addEventListener("click", async () => {
+        await supabase.from("service_products").delete().eq("id", btn.dataset.delr);
+        toast("Removido.", "success");
+        loadRecipe();
+      }));
+    }
+
+    // ======================================================================
+    //  Clients
+    // ======================================================================
+    $("#btnAddClient").addEventListener("click", async () => {
+      const full_name = prompt("Nome do cliente:");
+      if (!full_name) return;
+      const phone = prompt("Telefone:") || null;
+      const email = prompt("Email:") || null;
+      await supabase.from("clients").insert({ salon_id: currentSalon.id, full_name, phone, email });
+      toast("Cliente adicionado.", "success");
+      refreshClients();
+    });
+
+    $("#btnSaveClient").addEventListener("click", async () => {
+      const id = $("#cliId").value || null;
+      const payload = {
+        salon_id: currentSalon.id,
+        full_name: $("#cliName").value.trim(),
+        phone: $("#cliPhone").value.trim(),
+        email: $("#cliEmail").value.trim(),
+        notes: $("#cliNotes").value
+      };
+      if (!payload.full_name) return toast("Informe o nome.");
+      if (id) await supabase.from("clients").update(payload).eq("id", id);
+      else {
+        const ins = await supabase.from("clients").insert(payload).select().single();
+        $("#cliId").value = ins.data.id;
+      }
+      toast("Cliente salvo.", "success");
+      refreshClients();
+    });
+
+    $("#btnNewPhoto").addEventListener("click", () => $("#cliPhotoInput").click());
+    $("#cliPhotoInput").addEventListener("change", async () => {
+      const id = $("#cliId").value;
+      if (!id) return toast("Salve o cliente antes de adicionar fotos.");
+      const file = $("#cliPhotoInput").files?.[0];
+      if (!file) return;
+      const path = `${currentSalon.id}/${id}/${Date.now()}-${file.name}`;
+      const { error } = await supabase.storage.from("client-photos").upload(path, file);
+      if (error) return toast("Falha ao enviar foto.", "error");
+      toast("Foto enviada.", "success");
+      loadClientPhotos(id);
+    });
+
+    $("#clientSearch").addEventListener("input", refreshClients);
+
+    async function refreshClients() {
+      const q = $("#clientSearch").value?.trim();
+      let query = supabase.from("clients").select("*, appointments(start_at)").eq("salon_id", currentSalon.id);
+      if (q) query = query.or(`full_name.ilike.%${q}%,email.ilike.%${q}%,phone.ilike.%${q}%`);
+      const { data } = await query.order("full_name");
+      const tbody = $("#tblClients"); tbody.innerHTML = "";
+      (data || []).forEach(c => {
+        const last = (c.appointments || []).sort((a,b)=>new Date(b.start_at)-new Date(a.start_at))[0]?.start_at;
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="py-2 pr-2">${c.full_name}</td>
+          <td class="py-2 pr-2">${c.phone || ""} ${c.email ? "· "+c.email:""}</td>
+          <td class="py-2 pr-2">${last ? dayjs(last).format("DD/MM/YYYY") : "—"}</td>
+          <td class="py-2 pr-2"><button class="text-xs link" data-open="${c.id}">Abrir</button></td>`;
+        tbody.appendChild(tr);
+      });
+      tbody.querySelectorAll("button[data-open]").forEach(btn => btn.addEventListener("click", () => openClient(btn.dataset.open)));
+      fillClientsDatalist();
+    }
+
+    async function openClient(id) {
+      const { data: c } = await supabase.from("clients").select("*").eq("id", id).single();
+      $("#cliId").value = c.id;
+      $("#cliName").value = c.full_name || "";
+      $("#cliPhone").value = c.phone || "";
+      $("#cliEmail").value = c.email || "";
+      $("#cliNotes").value = c.notes || "";
+      loadClientPhotos(c.id);
+      showView("clients");
+    }
+
+    async function loadClientPhotos(id) {
+      const { data, error } = await supabase.storage.from("client-photos").list(`${currentSalon.id}/${id}`, { limit: 50 });
+      const wrap = $("#cliPhotos"); wrap.innerHTML = "";
+      if (error) return;
+      for (const f of data) {
+        const { data: pub } = supabase.storage.from("client-photos").getPublicUrl(`${currentSalon.id}/${id}/${f.name}`);
+        const img = document.createElement("img");
+        img.src = pub.publicUrl;
+        img.className = "w-full aspect-square object-cover rounded border";
+        wrap.appendChild(img);
+      }
+    }
+
+    // ======================================================================
+    //  Inventory + Barcode + IA descrição
+    // ======================================================================
+    $("#btnScan").addEventListener("click", async () => {
+      const el = $("#qrReader");
+      el.classList.toggle("hidden");
+      if (!el.classList.contains("hidden") && !html5QrCode) {
+        html5QrCode = new Html5Qrcode("qrReader");
+        try {
+          await html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 200 },
+            (decodedText) => { $("#prodBarcode").value = decodedText; toast("Código lido!"); html5QrCode.stop(); el.classList.add("hidden"); });
+        } catch (e) {
+          toast("Falha ao iniciar câmera: " + e, "error");
+        }
+      } else if (html5QrCode) {
+        await html5QrCode.stop();
+        html5QrCode = null;
+      }
+    });
+
+    $("#btnAIProdDesc").addEventListener("click", async () => {
+      const name = $("#prodName").value.trim();
+      if (!name) return toast("Informe o nome do produto.");
+      if (!ENV.GEMINI_API_KEY) {
+        $("#prodDesc").value = `Descrição sugerida: ${name} — qualidade profissional, resultados consistentes e duradouros.`;
+        return toast("GEMINI_API_KEY não configurada. Usando sugestão local.", "error");
+      }
+      const prompt = `Gere uma descrição curta e persuasiva (max 60 palavras) para o produto de salão: "${name}". Estilo claro, com 2 benefícios e 1 dica de uso.`;
+      try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${ENV.GEMINI_API_KEY}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }]}]})
+        });
+        const data = await res.json();
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "Excelente para uso profissional no salão.";
+        $("#prodDesc").value = text;
+      } catch (e) {
+        toast("Falha na IA: " + e.message, "error");
+      }
+    });
+
+    $("#btnSaveProduct").addEventListener("click", async () => {
+      const payload = {
+        salon_id: currentSalon.id,
+        name: $("#prodName").value.trim(),
+        sku: $("#prodSku").value.trim() || null,
+        barcode: $("#prodBarcode").value.trim() || null,
+        price: Number($("#prodPrice").value || 0),
+        stock: Number($("#prodStock").value || 0),
+        unit: $("#prodUnit").value,
+        description: $("#prodDesc").value || null
+      };
+      if (!payload.name) return toast("Informe o nome do produto.");
+      const { error } = await supabase.from("products").insert(payload);
+      if (error) return toast(error.message, "error");
+      toast("Produto salvo.", "success");
+      $("#prodName").value = $("#prodSku").value = $("#prodBarcode").value = $("#prodPrice").value = $("#prodStock").value = $("#prodDesc").value = "";
+      refreshProducts();
+    });
+
+    $("#prodSearch").addEventListener("input", refreshProducts);
+
+    async function refreshProducts() {
+      if (!currentSalon) return;
+      const q = $("#prodSearch").value?.trim();
+      let query = supabase.from("products").select("*").eq("salon_id", currentSalon.id);
+      if (q) query = query.or(`name.ilike.%${q}%,sku.ilike.%${q}%,barcode.ilike.%${q}%`);
+      const { data } = await query.order("name");
+      const tbody = $("#tblProducts"); tbody.innerHTML = "";
+      (data || []).forEach(p => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="py-2 pr-2">${p.name}</td>
+          <td class="py-2 pr-2">${p.sku || "—"}</td>
+          <td class="py-2 pr-2">${p.barcode || "—"}</td>
+          <td class="py-2 pr-2">${money(p.price)}</td>
+          <td class="py-2 pr-2">${p.stock}</td>
+          <td class="py-2 pr-2">${p.unit}</td>
+          <td class="py-2 pr-2">
+            <button class="text-xs link" data-edp="${p.id}">Editar</button> ·
+            <button class="text-xs text-red-600 underline" data-delp="${p.id}">Excluir</button>
+          </td>`;
+        tbody.appendChild(tr);
+      });
+      tbody.querySelectorAll("button[data-edp]").forEach(btn => btn.addEventListener("click", () => editProduct(btn.dataset.edp)));
+      tbody.querySelectorAll("button[data-delp]").forEach(btn => btn.addEventListener("click", () => deleteProduct(btn.dataset.delp)));
+    }
+
+    async function editProduct(id) {
+      const { data: p } = await supabase.from("products").select("*").eq("id", id).single();
+      const name = prompt("Nome:", p.name) || p.name;
+      const price = Number(prompt("Preço:", p.price)) || p.price;
+      const stock = Number(prompt("Estoque:", p.stock)) || p.stock;
+      await supabase.from("products").update({ name, price, stock }).eq("id", id);
+      toast("Produto atualizado.", "success");
+      refreshProducts();
+    }
+    async function deleteProduct(id) {
+      if (!confirm("Excluir produto?")) return;
+      await supabase.from("products").delete().eq("id", id);
+      toast("Produto excluído.", "success");
+      refreshProducts();
+    }
+
+    // ======================================================================
+    //  Payments (Mercado Pago) — STUB client chama sua rota serverless
+    // ======================================================================
+    $("#btnCreatePayment").addEventListener("click", async () => {
+      if (!currentSalon) return;
+      const amount = Number($("#payAmount").value || 0);
+      const desc = $("#payDesc").value || "Serviços de salão";
+      const clientName = $("#payClient").value || "Cliente";
+      if (amount <= 0) return toast("Informe o valor.", "error");
+
+      try {
+        const res = await fetch(buildApiUrl("/api/mp/preference"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            salon_id: currentSalon.id,
+            title: desc,
+            amount,
+            payer: { name: clientName },
+          })
+        });
+        if (!res.ok) throw new Error("Falha na rota /api/mp/preference");
+        const data = await res.json();
+        const url = data.init_point || data.sandbox_init_point || data.point_of_interaction?.transaction_data?.ticket_url;
+        if (!url) throw new Error("Resposta sem URL de checkout.");
+        $("#payLinkWrap").innerHTML = `<a class="link" target="_blank" href="${url}">${url}</a>`;
+        QRCode.toCanvas($("#qrCanvas"), url, { width: 240 });
+        toast("Pagamento gerado!", "success");
+      } catch (e) {
+        // Modo fallback dev: gera um link fake apenas para testes locais
+        const fake = `https://www.mercadopago.com.br/checkout/v1?amount=${amount}&desc=${encodeURIComponent(desc)}`;
+        $("#payLinkWrap").innerHTML = `<div class="subtle">[DEV] Configure a rota serverless.<br/>Link de teste:</div><a class="link" target="_blank" href="${fake}">${fake}</a>`;
+        QRCode.toCanvas($("#qrCanvas"), fake, { width: 240 });
+        toast("Rota /api/mp/preference não encontrada. Usando link de teste.", "error");
+      }
+    });
+
+    async function refreshPayments() {
+      if (!currentSalon) return;
+      const { data } = await supabase.from("payments").select("*").eq("salon_id", currentSalon.id).order("created_at", { ascending: false }).limit(20);
+      const tbody = $("#tblPayments"); tbody.innerHTML = "";
+      (data || []).forEach(p => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="py-2 pr-2">${dayjs(p.created_at).format("DD/MM HH:mm")}</td>
+          <td class="py-2 pr-2">${money(p.amount)}</td>
+          <td class="py-2 pr-2"><span class="chip">${p.status}</span></td>
+          <td class="py-2 pr-2">${p.provider_ref || "—"}</td>`;
+        tbody.appendChild(tr);
+      });
+      // realtime
+      supabase.channel('pay_rt')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'payments', filter: `salon_id=eq.${currentSalon.id}` }, refreshPayments)
+        .subscribe();
+    }
+
+    // ======================================================================
+    //  Settings
+    // ======================================================================
+    async function loadSettings() {
+      if (!currentSalon) return;
+      $("#cfgName").value = currentSalon.name || "";
+      $("#cfgSlug").value = currentSalon.slug || "";
+      $("#cfgAddress").value = currentSalon.address || "";
+      $("#cfgPrimary").value = currentSalon.theme?.primary || "#7c3aed";
+      $("#cfgSurface").value = currentSalon.theme?.surface || "#ffffff";
+      $("#cfgText").value = currentSalon.theme?.text || "#0f172a";
+      $("#cfgLogoPreview").src = currentSalon.logo_url || "";
+    }
+    $("#btnSaveSettings").addEventListener("click", async () => {
+      if (!currentSalon) return;
+      const theme = { primary: $("#cfgPrimary").value, surface: $("#cfgSurface").value, text: $("#cfgText").value };
+      const payload = { name: $("#cfgName").value.trim(), slug: $("#cfgSlug").value.trim(), address: $("#cfgAddress").value.trim(), theme };
+      // upload logo se houver
+      const file = $("#cfgLogo").files?.[0];
+      if (file) {
+        const path = `logos/${currentSalon.id}.png`;
+        const { error: sErr } = await supabase.storage.from("salon-logos").upload(path, file, { upsert: true });
+        if (!sErr) {
+          const { data: pub } = supabase.storage.from("salon-logos").getPublicUrl(path);
+          payload.logo_url = pub?.publicUrl || null;
+        }
+      }
+      const { data, error } = await supabase.from("salons").update(payload).eq("id", currentSalon.id).select().single();
+      if (error) return toast(error.message, "error");
+      currentSalon = data;
+      setTheme(theme);
+      $("#salonNameTop").textContent = currentSalon.name;
+      $("#cfgLogoPreview").src = currentSalon.logo_url || "";
+      toast("Configurações salvas.", "success");
+    });
+
+    // ======================================================================
+    //  Public Booking (MVP)
+    // ======================================================================
+    async function loadPublic(slug) {
+      $("#authSection").classList.add("hidden");
+      $("#appSection").classList.add("hidden");
+      $("#onboardingSection").classList.add("hidden");
+      $("#publicSection").classList.remove("hidden");
+      if (!slug) return;
+      const { data: salon } = await supabase.from("salons").select("*").eq("slug", slug).single();
+      if (!salon) { $("#pubSalonName").textContent = "Salão não encontrado"; return; }
+      setTheme(salon.theme || {});
+      $("#pubSalonName").textContent = salon.name;
+      const { data: services } = await supabase.from("services").select("*").eq("salon_id", salon.id).eq("online_bookable", true).order("name");
+      $("#pubService").innerHTML = (services || []).map(s => `<option value="${s.id}" data-duration="${s.duration_minutes}">${s.name} — ${money(s.price)}</option>`).join("");
+      $("#btnPublicBook").onclick = async () => {
+        const serviceId = $("#pubService").value;
+        const full_name = $("#pubName").value.trim();
+        const phone = $("#pubPhone").value.trim();
+        const date = $("#pubDate").value; const time = $("#pubTime").value;
+        const professional = $("#pubProfessional").value.trim();
+        if (!serviceId || !full_name || !date || !time) return toast("Preencha serviço, nome, data e horário.");
+        // cria/garante cliente
+        let client = await supabase.from("clients").select("*").eq("salon_id", salon.id).ilike("full_name", full_name).limit(1).single();
+        if (client.error && client.error.code === "PGRST116") {
+          const ins = await supabase.from("clients").insert({ salon_id: salon.id, full_name, phone }).select().single();
+          client = ins;
+        }
+        const start = dayjs(`${date}T${time}`).toISOString();
+        const duration = Number($("#pubService").selectedOptions[0].dataset.duration || 60);
+        const end = dayjs(start).add(duration, "minute").toISOString();
+        await supabase.from("appointments").insert({
+          salon_id: salon.id, client_id: client.data.id, service_id: serviceId, professional, start_at: start, end_at: end, status: "scheduled"
+        });
+        toast("Agendamento solicitado! Você receberá a confirmação por mensagem.", "success");
+      };
+    }
+
+    // ======================================================================
+    //  Insights IA (Gemini)
+    // ======================================================================
+    $("#btnIAInsight").addEventListener("click", generateInsights);
+    $("#btnRefreshInsights").addEventListener("click", generateInsights);
+    async function generateInsights() {
+      const ul = $("#insightsList");
+      ul.innerHTML = "<li>Gerando…</li>";
+      if (!ENV.GEMINI_API_KEY) {
+        ul.innerHTML = "<li>Configure GEMINI_API_KEY para habilitar insights automáticos.</li>";
+        return;
+      }
+      try {
+        // dados básicos do mês para contexto
+        const startMonth = dayjs().startOf("month").toISOString();
+        const endMonth = dayjs().endOf("month").toISOString();
+        const { data: pays } = await supabase.from("payments").select("amount,status").eq("salon_id", currentSalon.id).gte("created_at", startMonth).lte("created_at", endMonth);
+        const revenue = (pays || []).filter(p => p.status === "approved").reduce((s, p) => s + Number(p.amount), 0);
+        const { count: aptsCount } = await supabase.from("appointments").select("*", { count: "exact", head: true }).eq("salon_id", currentSalon.id).gte("start_at", startMonth).lte("start_at", endMonth);
+
+        const prompt = `Você é um copiloto de gestão de salões.
+Dados do mês: faturamento BRL ${revenue.toFixed(2)}, agendamentos ${aptsCount||0}.
+Gere 3 insights curtos e acionáveis (bullet points), com foco em promoções, otimização de agenda e retenção de clientes.`;
+
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${ENV.GEMINI_API_KEY}`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }]}]})
+        });
+        const data = await res.json();
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "- Aumente a recorrência com pacotes trimestrais.";
+        const bullets = text.split("\n").filter(Boolean).slice(0,5).map(t => t.replace(/^[\-\*\d\.\s]+/,""));
+        ul.innerHTML = bullets.map(b => `<li>${b}</li>`).join("");
+      } catch (e) {
+        ul.innerHTML = "<li>Falha ao gerar insights.</li>";
+      }
+    }
+
+    // ======================================================================
+    //  Navegação
+    // ======================================================================
+    $$("#appSection nav [data-nav]").forEach(btn => {
+      btn.addEventListener("click", () => showView(btn.dataset.nav));
+    });
+    $("#btnGoPublic").addEventListener("click", () => {
+      const slug = currentSalon?.slug || "";
+      location.hash = "#/p/" + slug;
+    });
+
+    // ======================================================================
+    //  Inicialização
+    // ======================================================================
+    (async function init() {
+      setTheme({}); updateContrastBadge();
+      await fetchSession();
+      if (currentUser) await loadSalon();
+      route();
+    })();
+  </script>
+</body>
+</html>
