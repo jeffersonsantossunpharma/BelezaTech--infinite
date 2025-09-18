@@ -3,16 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BelezaTech Infinite - Gestão Inteligente de Salões</title>
+    <title>BelezaTech Infinite - Gestão Inteligente</title>
     
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#8B5CF6">
     <meta name="description" content="Sistema completo de gestão para salões de beleza com IA integrada">
-    <meta name="keywords" content="salão, beleza, gestão, agendamento, pwa">
-    <link rel="canonical" href="https://belezatech.vercel.app">
     
     <!-- PWA Icons -->
-    <link rel="icon" type="image/png" sizes="192x192" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💇</text></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💇</text></svg>">
     <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💇</text></svg>">
     
     <!-- Bootstrap CSS -->
@@ -21,12 +19,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Supabase -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- QR Code Generator -->
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
     
-    <!-- Environment Variables -->
+    <!-- Environment Variables - COLOQUE SUAS CHAVES AQUI -->
     <script>
         window.ENV = {
             SUPABASE_URL: "https://lkuzedzomsjvuqzdjmce.supabase.co",
@@ -40,1428 +36,882 @@
             --primary-color: #8B5CF6;
             --secondary-color: #F3E8FF;
             --accent-color: #10B981;
-            --danger-color: #EF4444;
-            --warning-color: #F59E0B;
-            --dark-color: #1F2937;
-            --light-color: #F9FAFB;
         }
-
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: linear-gradient(135deg, var(--secondary-color) 0%, #FFFFFF 100%);
+            font-family: 'Inter', sans-serif;
+            background: #f8fafc;
             min-height: 100vh;
         }
-
         .sidebar {
             background: linear-gradient(180deg, var(--primary-color) 0%, #6D28D9 100%);
             min-height: 100vh;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
         }
-
         .sidebar .nav-link {
             color: rgba(255,255,255,0.8);
-            transition: all 0.3s ease;
+            margin: 4px 0;
             border-radius: 8px;
-            margin: 2px 0;
         }
-
-        .sidebar .nav-link:hover,
-        .sidebar .nav-link.active {
-            background: rgba(255,255,255,0.2);
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            background: rgba(255,255,255,0.1);
             color: white;
-            transform: translateX(5px);
         }
-
         .card {
             border: none;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            transition: transform 0.3s ease;
         }
-
-        .card:hover {
-            transform: translateY(-2px);
-        }
-
-        .btn-primary {
-            background: var(--primary-color);
-            border: none;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-        }
-
-        .btn-primary:hover {
-            background: #7C3AED;
-            transform: translateY(-1px);
-        }
-
         .metric-card {
-            background: linear-gradient(135deg, var(--primary-color), #7C3AED);
-            color: white;
-            border-radius: 12px;
-        }
-
-        .calendar-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 1px;
-            background: #e2e8f0;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        .calendar-day {
             background: white;
-            padding: 12px;
-            min-height: 100px;
-            cursor: pointer;
-            transition: background 0.3s ease;
+            border-left: 4px solid var(--primary-color);
         }
-
-        .calendar-day:hover {
-            background: var(--secondary-color);
-        }
-
-        .appointment {
-            background: var(--primary-color);
-            color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.8em;
-            margin: 2px 0;
-        }
-
-        .loading-spinner {
-            display: none;
-            text-align: center;
-            padding: 20px;
-        }
-
-        .auth-container {
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-        }
-
-        .onboarding-step {
-            display: none;
-        }
-
-        .onboarding-step.active {
-            display: block;
-        }
-
-        .color-palette {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .color-option {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            cursor: pointer;
-            border: 3px solid transparent;
-            transition: border-color 0.3s ease;
-        }
-
-        .color-option.selected {
+        .btn-primary {
+            background-color: var(--primary-color);
             border-color: var(--primary-color);
         }
-
-        .product-card {
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 10px 0;
-            transition: all 0.3s ease;
+        .btn-primary:hover {
+            background-color: #7c3aed;
+            border-color: #7c3aed;
         }
 
-        .product-card:hover {
-            border-color: var(--primary-color);
-            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.15);
-        }
-
-        .client-avatar {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            background: var(--primary-color);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-        }
-
-        /* Chat Bot Styles */
-        .chatbot-container {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 1050;
-        }
-
+        /* Chatbot */
+        .chatbot-container { position: fixed; bottom: 20px; right: 20px; z-index: 1050; }
         .chatbot-toggle {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary-color), #7C3AED);
-            border: none;
-            color: white;
-            font-size: 24px;
-            box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4);
-            transition: all 0.3s ease;
-            animation: pulse 2s infinite;
+            width: 60px; height: 60px; border-radius: 50%; background: var(--primary-color);
+            border: none; color: white; font-size: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            cursor: pointer; transition: transform 0.3s;
         }
-
-        .chatbot-toggle:hover {
-            transform: scale(1.1);
-            box-shadow: 0 6px 25px rgba(139, 92, 246, 0.6);
-        }
-
-        @keyframes pulse {
-            0% { box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4); }
-            50% { box-shadow: 0 4px 20px rgba(139, 92, 246, 0.8); }
-            100% { box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4); }
-        }
-
+        .chatbot-toggle:hover { transform: scale(1.1); }
         .chatbot-window {
-            position: fixed;
-            bottom: 90px;
-            right: 20px;
-            width: 350px;
-            height: 500px;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            display: none;
-            flex-direction: column;
-            overflow: hidden;
-            z-index: 1040;
+            position: fixed; bottom: 90px; right: 20px; width: 350px; height: 500px;
+            background: white; border-radius: 16px; box-shadow: 0 5px 40px rgba(0,0,0,0.16);
+            display: none; flex-direction: column; overflow: hidden;
         }
-
         .chatbot-header {
-            background: linear-gradient(135deg, var(--primary-color), #7C3AED);
-            color: white;
-            padding: 15px 20px;
-            display: flex;
-            align-items: center;
-            justify-content: between;
+            background: var(--primary-color); color: white; padding: 15px;
+            display: flex; justify-content: space-between; align-items: center;
         }
-
-        .chatbot-messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
-            background: #f8f9fa;
-        }
-
-        .chat-message {
-            margin-bottom: 15px;
-            display: flex;
-            align-items: flex-start;
-        }
-
-        .chat-message.user {
-            justify-content: flex-end;
-        }
-
-        .chat-message.bot {
-            justify-content: flex-start;
-        }
-
+        .chatbot-messages { flex: 1; overflow-y: auto; padding: 15px; background: #f1f5f9; }
+        .chat-message { margin-bottom: 12px; display: flex; }
+        .chat-message.user { justify-content: flex-end; }
         .message-bubble {
-            max-width: 80%;
-            padding: 12px 16px;
-            border-radius: 18px;
-            font-size: 14px;
-            line-height: 1.4;
+            max-width: 80%; padding: 10px 14px; border-radius: 18px; font-size: 14px;
         }
+        .message-bubble.bot { background: white; color: #334155; border-bottom-left-radius: 4px; }
+        .message-bubble.user { background: var(--primary-color); color: white; border-bottom-right-radius: 4px; }
+        .chatbot-input { padding: 15px; border-top: 1px solid #e2e8f0; display: flex; gap: 10px; }
+        .chat-input { flex: 1; border-radius: 20px; border: 1px solid #cbd5e1; padding: 8px 15px; }
 
-        .message-bubble.user {
-            background: var(--primary-color);
-            color: white;
-            border-bottom-right-radius: 4px;
-        }
-
-        .message-bubble.bot {
-            background: white;
-            color: #333;
-            border: 1px solid #e2e8f0;
-            border-bottom-left-radius: 4px;
-        }
-
-        .chatbot-input {
-            padding: 15px 20px;
-            border-top: 1px solid #e2e8f0;
-            background: white;
-        }
-
-        .chat-input-group {
-            display: flex;
-            gap: 10px;
-        }
-
-        .chat-input {
-            flex: 1;
-            border: 1px solid #e2e8f0;
-            border-radius: 20px;
-            padding: 10px 15px;
-            outline: none;
-            font-size: 14px;
-        }
-
-        .chat-send-btn {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: var(--primary-color);
-            border: none;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .chat-suggestions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 10px;
-        }
-
-        .chat-suggestion {
-            background: white;
-            border: 1px solid var(--primary-color);
-            color: var(--primary-color);
-            padding: 6px 12px;
-            border-radius: 15px;
-            font-size: 12px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .chat-suggestion:hover {
-            background: var(--primary-color);
-            color: white;
-        }
-
-        .typing-indicator {
-            display: flex;
-            align-items: center;
-            padding: 12px 16px;
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 18px;
-            border-bottom-left-radius: 4px;
-            max-width: 80px;
-        }
-
-        .typing-dots {
-            display: flex;
-            gap: 4px;
-        }
-
-        .typing-dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: #666;
-            animation: typing 1.4s infinite;
-        }
-
-        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
-        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
-
-        @keyframes typing {
-            0%, 60%, 100% { transform: translateY(0); }
-            30% { transform: translateY(-10px); }
-        }
-
-        /* PWA Install Prompt */
+        /* PWA Prompt */
         .pwa-install-prompt {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            right: 20px;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            padding: 20px;
-            display: none;
-            z-index: 1030;
+            position: fixed; bottom: 20px; left: 20px; right: 20px; background: white;
+            padding: 15px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            display: none; z-index: 1000;
         }
+        .pwa-install-prompt.show { display: flex; justify-content: space-between; align-items: center; }
 
-        .pwa-install-prompt.show {
-            display: block;
-            animation: slideUp 0.3s ease;
-        }
-
-        @keyframes slideUp {
-            from { transform: translateY(100%); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-
-        /* Time slots grid */
-        .time-slots {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-            gap: 10px;
-            margin-top: 15px;
-        }
-
+        /* Utilities */
+        .hidden { display: none !important; }
+        .loading { opacity: 0.7; pointer-events: none; }
+        
+        /* Time slots */
+        .time-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; margin-top: 10px; }
         .time-slot {
-            padding: 10px;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            background: white;
+            padding: 8px; border: 1px solid #ddd; border-radius: 8px; text-align: center; cursor: pointer;
         }
-
-        .time-slot:hover {
-            border-color: var(--primary-color);
-            background: var(--secondary-color);
-        }
-
-        .time-slot.selected {
-            border-color: var(--primary-color);
-            background: var(--primary-color);
-            color: white;
-        }
-
-        .time-slot.disabled {
-            background: #f5f5f5;
-            color: #ccc;
-            cursor: not-allowed;
-            border-color: #e5e5e5;
-        }
-
-        .time-slot.disabled:hover {
-            background: #f5f5f5;
-            border-color: #e5e5e5;
-        }
-
-        @media (max-width: 768px) {
-            .sidebar {
-                transform: translateX(-100%);
-                transition: transform 0.3s ease;
-                position: fixed;
-                z-index: 1000;
-                width: 250px;
-            }
-
-            .sidebar.show {
-                transform: translateX(0);
-            }
-
-            .main-content {
-                margin-left: 0 !important;
-            }
-
-            .chatbot-window {
-                width: calc(100vw - 20px);
-                right: 10px;
-                left: 10px;
-                bottom: 90px;
-            }
-
-            .pwa-install-prompt {
-                left: 10px;
-                right: 10px;
-            }
-        }
-
-        .hidden {
-            display: none !important;
-        }
-
-        .fade-in {
-            animation: fadeIn 0.5s ease-in;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Offline indicator */
-        .offline-indicator {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            background: #f59e0b;
-            color: white;
-            text-align: center;
-            padding: 10px;
-            z-index: 9999;
-            display: none;
-        }
-
-        .offline-indicator.show {
-            display: block;
-        }
-
-        /* Loading states */
-        .loading {
-            opacity: 0.6;
-            pointer-events: none;
-        }
-
-        .spinner-border-sm {
-            width: 1rem;
-            height: 1rem;
-        }
+        .time-slot.available:hover { border-color: var(--primary-color); background: #f3e8ff; }
+        .time-slot.selected { background: var(--primary-color); color: white; border-color: var(--primary-color); }
+        .time-slot.disabled { background: #f1f5f9; color: #94a3b8; cursor: not-allowed; }
     </style>
 </head>
 <body>
-    <!-- Offline Indicator -->
-    <div id="offlineIndicator" class="offline-indicator">
-        <i class="fas fa-wifi-slash me-2"></i>
-        Você está offline. Algumas funcionalidades podem estar limitadas.
-    </div>
 
     <!-- PWA Install Prompt -->
     <div id="pwaInstallPrompt" class="pwa-install-prompt">
-        <div class="d-flex align-items-center justify-content-between">
-            <div>
-                <h6 class="mb-1">Instalar BelezaTech</h6>
-                <small class="text-muted">Adicione à tela inicial para acesso rápido</small>
-            </div>
-            <div>
-                <button class="btn btn-outline-secondary btn-sm me-2" id="dismissInstall">Agora não</button>
-                <button class="btn btn-primary btn-sm" id="installPWA">Instalar</button>
-            </div>
+        <div>
+            <strong>Instalar BelezaTech</strong>
+            <p class="mb-0 small text-muted">Acesse rapidamente pela sua tela inicial.</p>
+        </div>
+        <div>
+            <button class="btn btn-sm btn-link text-muted" id="dismissInstall">Depois</button>
+            <button class="btn btn-sm btn-primary" id="installPWA">Instalar</button>
         </div>
     </div>
 
     <!-- Chatbot -->
     <div class="chatbot-container">
-        <button class="chatbot-toggle" id="chatbotToggle">
-            <i class="fas fa-comments"></i>
-        </button>
-        
+        <button class="chatbot-toggle" id="chatbotToggle"><i class="fas fa-comments"></i></button>
         <div class="chatbot-window" id="chatbotWindow">
             <div class="chatbot-header">
-                <div class="d-flex align-items-center">
-                    <div class="me-3">
-                        <i class="fas fa-robot"></i>
-                    </div>
-                    <div>
-                        <h6 class="mb-0">Assistente IA</h6>
-                        <small class="opacity-75">Online agora</small>
-                    </div>
-                </div>
-                <button class="btn btn-link text-white p-0 ms-auto" id="closeChatbot">
-                    <i class="fas fa-times"></i>
-                </button>
+                <h6 class="mb-0">Assistente Virtual</h6>
+                <button class="btn btn-sm text-white" id="closeChatbot"><i class="fas fa-times"></i></button>
             </div>
-            
             <div class="chatbot-messages" id="chatbotMessages">
-                <div class="chat-message bot">
-                    <div class="message-bubble bot">
-                        Olá! 👋 Sou o assistente inteligente do BelezaTech. Como posso ajudar você hoje?
-                    </div>
-                </div>
-                <div class="chat-suggestions" id="chatSuggestions">
-                    <span class="chat-suggestion" data-suggestion="agendar">📅 Fazer agendamento</span>
-                    <span class="chat-suggestion" data-suggestion="horarios">🕐 Ver horários</span>
-                    <span class="chat-suggestion" data-suggestion="servicos">💇 Nossos serviços</span>
-                    <span class="chat-suggestion" data-suggestion="historico">📋 Meu histórico</span>
-                </div>
+                <!-- Messages here -->
             </div>
-            
             <div class="chatbot-input">
-                <div class="chat-input-group">
-                    <input type="text" class="chat-input" id="chatInput" placeholder="Digite sua mensagem...">
-                    <button class="chat-send-btn" id="chatSendBtn">
-                        <i class="fas fa-paper-plane"></i>
-                    </button>
-                </div>
+                <input type="text" class="chat-input" id="chatInput" placeholder="Digite sua dúvida...">
+                <button class="btn btn-primary rounded-circle" id="chatSendBtn"><i class="fas fa-paper-plane"></i></button>
             </div>
         </div>
     </div>
 
-    <!-- [Resto do HTML permanece igual - Auth, Onboarding, Dashboard, etc.] -->
-    <!-- Auth/Login Screen -->
+    <!-- 1. AUTH SCREEN -->
     <div id="authScreen" class="container-fluid vh-100 d-flex align-items-center justify-content-center">
-        <div class="auth-container p-5" style="max-width: 400px; width: 100%;">
+        <div class="card p-5" style="width: 100%; max-width: 400px;">
             <div class="text-center mb-4">
-                <i class="fas fa-cut fa-3x text-primary mb-3"></i>
-                <h2 class="fw-bold">BelezaTech Infinite</h2>
+                <h3 class="fw-bold text-primary">BelezaTech Infinite</h3>
                 <p class="text-muted">Gestão Inteligente de Salões</p>
             </div>
-
             <form id="authForm">
                 <div class="mb-3">
                     <label class="form-label">Email</label>
-                    <input type="email" class="form-control" id="email" placeholder="seu@email.com" required>
+                    <input type="email" class="form-control" id="email" required>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Senha</label>
-                    <input type="password" class="form-control" id="password" placeholder="••••••••" required>
+                    <input type="password" class="form-control" id="password" required>
                 </div>
                 <button type="submit" class="btn btn-primary w-100 mb-3" id="authSubmitBtn">
                     <span id="authButtonText">Entrar</span>
                     <span class="spinner-border spinner-border-sm d-none" id="authSpinner"></span>
                 </button>
-                <div class="text-center">
+                <p class="text-center mb-0">
                     <a href="#" id="toggleAuth" class="text-decoration-none">Não tem conta? Cadastre-se</a>
-                </div>
+                </p>
             </form>
         </div>
     </div>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- 2. ONBOARDING SCREEN -->
+    <div id="onboardingScreen" class="container-fluid py-5 hidden">
+        <div class="card mx-auto" style="max-width: 600px;">
+            <div class="card-body p-5">
+                <h4 class="card-title mb-4">Configuração Inicial</h4>
+                
+                <!-- Step 1: Dados do Salão -->
+                <div id="onboardingStep1" class="onboarding-step">
+                    <h5>Passo 1: Informações do Salão</h5>
+                    <div class="mb-3">
+                        <label class="form-label">Nome do Salão</label>
+                        <input type="text" class="form-control" id="salonName" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3"><label>Telefone</label><input type="text" id="salonPhone" class="form-control"></div>
+                        <div class="col-md-6 mb-3"><label>Endereço</label><input type="text" id="salonAddress" class="form-control"></div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3"><label>Abre (ex: 08:00)</label><input type="time" id="salonOpen" class="form-control" value="09:00"></div>
+                        <div class="col-md-6 mb-3"><label>Fecha (ex: 18:00)</label><input type="time" id="salonClose" class="form-control" value="19:00"></div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Identidade Visual -->
+                <div id="onboardingStep2" class="onboarding-step hidden">
+                    <h5>Passo 2: Identidade Visual</h5>
+                    <div class="mb-3">
+                        <label class="form-label">Logo do Salão</label>
+                        <input type="file" class="form-control" id="salonLogo" accept="image/*">
+                    </div>
+                    <label class="form-label">Cor Principal</label>
+                    <input type="color" class="form-control form-control-color w-100" id="salonColor" value="#8B5CF6" title="Escolha a cor">
+                </div>
+
+                <!-- Step 3: Serviços Iniciais -->
+                <div id="onboardingStep3" class="onboarding-step hidden">
+                    <h5>Passo 3: Serviços Principais</h5>
+                    <div id="initialServicesList">
+                        <div class="service-row row mb-2">
+                            <div class="col-5"><input type="text" class="form-control" placeholder="Nome (ex: Corte)" value="Corte Feminino"></div>
+                            <div class="col-3"><input type="number" class="form-control" placeholder="Preço" value="80"></div>
+                            <div class="col-4"><input type="number" class="form-control" placeholder="Minutos" value="60"></div>
+                        </div>
+                         <div class="service-row row mb-2">
+                            <div class="col-5"><input type="text" class="form-control" placeholder="Nome" value="Escova"></div>
+                            <div class="col-3"><input type="number" class="form-control" placeholder="Preço" value="45"></div>
+                            <div class="col-4"><input type="number" class="form-control" placeholder="Minutos" value="30"></div>
+                        </div>
+                    </div>
+                    <button class="btn btn-sm btn-outline-primary mt-2" id="addServiceRowBtn">+ Adicionar Serviço</button>
+                </div>
+
+                <div class="d-flex justify-content-between mt-4">
+                    <button class="btn btn-light" id="prevStepBtn" disabled>Voltar</button>
+                    <button class="btn btn-primary" id="nextStepBtn">Próximo</button>
+                    <button class="btn btn-success hidden" id="finishOnboardingBtn">Concluir</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. DASHBOARD (Main App) -->
+    <div id="dashboardScreen" class="hidden">
+        <div class="row g-0">
+            <!-- Sidebar -->
+            <div class="col-auto col-md-3 col-xl-2 sidebar collapse show" id="sidebarMenu">
+                <div class="d-flex flex-column p-3 text-white min-vh-100">
+                    <a href="#" class="d-flex align-items-center mb-3 text-white text-decoration-none">
+                        <img id="dashboardLogo" src="" alt="" width="32" height="32" class="rounded-circle me-2 hidden">
+                        <span class="fs-5" id="dashboardSalonName">BelezaTech</span>
+                    </a>
+                    <hr>
+                    <ul class="nav nav-pills flex-column mb-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link active" data-page="dashboard"><i class="fas fa-home me-2"></i> Dashboard</a>
+                        </li>
+                        <li><a href="#" class="nav-link text-white" data-page="agenda"><i class="fas fa-calendar-alt me-2"></i> Agenda</a></li>
+                        <li><a href="#" class="nav-link text-white" data-page="clients"><i class="fas fa-users me-2"></i> Clientes</a></li>
+                        <li><a href="#" class="nav-link text-white" data-page="services"><i class="fas fa-cut me-2"></i> Serviços</a></li>
+                        <li><a href="#" class="nav-link text-white" data-page="stock"><i class="fas fa-box me-2"></i> Estoque</a></li>
+                        <li><a href="#" class="nav-link text-white" data-page="payments"><i class="fas fa-cash-register me-2"></i> Pagamentos</a></li>
+                        <li><a href="#" class="nav-link text-white" data-page="public"><i class="fas fa-external-link-alt me-2"></i> Portal Público</a></li>
+                    </ul>
+                    <hr>
+                    <div class="dropdown">
+                        <a href="#" class="d-flex align-items-center text-white text-decoration-none dropdown-toggle" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle me-2"></i>
+                            <strong id="userEmailDisplay">Admin</strong>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-dark">
+                            <li><a class="dropdown-item" href="#" id="logoutBtn">Sair</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content Area -->
+            <div class="col-md-9 col-xl-10 p-4" style="background: #f1f5f9; min-height: 100vh;">
+                
+                <!-- Page: Dashboard -->
+                <div id="page-dashboard" class="dashboard-page">
+                    <h2 class="mb-4">Dashboard</h2>
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="card metric-card p-3">
+                                <h6 class="text-muted">Faturamento Hoje</h6>
+                                <h3 id="kpiRevenue">R$ 0,00</h3>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card metric-card p-3">
+                                <h6 class="text-muted">Agendamentos</h6>
+                                <h3 id="kpiAppointments">0</h3>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card metric-card p-3">
+                                <h6 class="text-muted">Clientes Ativos</h6>
+                                <h3 id="kpiClients">0</h3>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card metric-card p-3">
+                                <h6 class="text-muted">Taxa Ocupação</h6>
+                                <h3 id="kpiOccupancy">0%</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="card p-3 mb-4">
+                                <h6>Faturamento Semanal</h6>
+                                <canvas id="revenueChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card p-3">
+                                <h6><i class="fas fa-robot"></i> Insight IA</h6>
+                                <p id="aiInsight" class="small text-muted">Carregando insight...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Page: Agenda -->
+                <div id="page-agenda" class="dashboard-page hidden">
+                     <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2>Agenda</h2>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#appointmentModal">+ Novo Agendamento</button>
+                    </div>
+                    <div class="card p-3">
+                        <div id="calendar">Agenda (Implementação futura com lib de calendário)</div>
+                        <p>Agendamentos de hoje:</p>
+                        <div id="todayAppointmentsList"></div>
+                    </div>
+                </div>
+
+                <!-- Page: Clientes (CRM) -->
+                <div id="page-clients" class="dashboard-page hidden">
+                     <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2>Clientes</h2>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#clientModal">+ Novo Cliente</button>
+                    </div>
+                    <div class="card">
+                        <div class="card-body" id="clientsTableContainer">
+                             <table class="table table-hover">
+                                 <thead><tr><th>Nome</th><th>Telefone</th><th>Última Visita</th><th>Ações</th></tr></thead>
+                                 <tbody id="clientsTableBody"></tbody>
+                             </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Page: Serviços -->
+                 <div id="page-services" class="dashboard-page hidden">
+                     <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2>Serviços</h2>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#serviceModal">+ Novo Serviço</button>
+                    </div>
+                    <div class="row" id="servicesGrid"></div>
+                 </div>
+
+                <!-- Page: Estoque -->
+                 <div id="page-stock" class="dashboard-page hidden">
+                     <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2>Estoque</h2>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#productModal">+ Novo Produto</button>
+                    </div>
+                     <div class="row" id="productsGrid"></div>
+                 </div>
+
+                <!-- Page: Portal Público -->
+                <div id="page-public" class="dashboard-page hidden">
+                    <h2>Portal do Cliente</h2>
+                    <div class="card p-4">
+                        <p>Compartilhe este link com seus clientes para que eles possam agendar serviços online:</p>
+                        <div class="input-group mb-3">
+                            <input type="text" class="form-control" id="publicLink" readonly>
+                            <button class="btn btn-outline-secondary" type="button" id="copyLinkBtn"><i class="fas fa-copy"></i></button>
+                        </div>
+                        <a href="#" id="viewPublicPortalBtn" class="btn btn-primary" target="_blank">Visualizar Portal</a>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. PUBLIC PORTAL (Client View) -->
+    <div id="publicPortal" class="container py-5 hidden">
+        <div class="text-center mb-4">
+            <img id="publicSalonLogo" src="" alt="" height="60" class="mb-3">
+            <h1 id="publicSalonName"></h1>
+        </div>
+
+        <div class="card mx-auto" style="max-width: 600px;">
+            <div class="card-body">
+                <h4 class="mb-4">Agendar Horário</h4>
+                <form id="publicBookingForm">
+                    <div class="mb-3">
+                        <label>Escolha o Serviço</label>
+                        <select class="form-select" id="bookingService" required></select>
+                    </div>
+                    <div class="mb-3">
+                        <label>Data</label>
+                        <input type="date" class="form-control" id="bookingDate" required>
+                    </div>
+                    <div class="mb-3">
+                        <label>Horário Disponível</label>
+                        <div id="timeSlots" class="time-slots"></div>
+                        <input type="hidden" id="bookingTime">
+                    </div>
+
+                    <hr class="my-4">
+                    <h5>Seus Dados</h5>
+                    <div class="row">
+                        <div class="col-md-6 mb-3"><input type="text" class="form-control" id="bookingName" placeholder="Nome" required></div>
+                        <div class="col-md-6 mb-3"><input type="tel" class="form-control" id="bookingPhone" placeholder="Telefone" required></div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg w-100">Confirmar Agendamento</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALS -->
+    <!-- Modal Novo Cliente -->
+    <div class="modal fade" id="clientModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title">Novo Cliente</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+            <form id="clientForm">
+                <div class="mb-3"><label>Nome</label><input type="text" class="form-control" id="c_name" required></div>
+                <div class="mb-3"><label>Telefone</label><input type="tel" class="form-control" id="c_phone" required></div>
+                <div class="mb-3"><label>Email</label><input type="email" class="form-control" id="c_email"></div>
+                <div class="mb-3"><label>Notas</label><textarea class="form-control" id="c_notes"></textarea></div>
+            </form>
+        </div>
+        <div class="modal-footer"><button class="btn btn-primary" id="saveClientBtn">Salvar</button></div>
+    </div></div></div>
+
+    <!-- Modal Novo Serviço -->
+    <div class="modal fade" id="serviceModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title">Novo Serviço</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+            <form id="serviceForm">
+                <div class="mb-3"><label>Nome</label><input type="text" class="form-control" id="s_name" required></div>
+                <div class="row">
+                    <div class="col-6 mb-3"><label>Preço (R$)</label><input type="number" step="0.01" class="form-control" id="s_price" required></div>
+                    <div class="col-6 mb-3"><label>Duração (min)</label><input type="number" class="form-control" id="s_duration" required></div>
+                </div>
+                <div class="form-check mb-3"><input class="form-check-input" type="checkbox" id="s_active" checked><label>Ativo para agendamento</label></div>
+            </form>
+        </div>
+        <div class="modal-footer"><button class="btn btn-primary" id="saveServiceBtn">Salvar</button></div>
+    </div></div></div>
+    
+    <!-- Modal Novo Produto -->
+     <div class="modal fade" id="productModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title">Novo Produto</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+            <form id="productForm">
+                <div class="mb-3"><label>Nome</label><input type="text" class="form-control" id="p_name" required></div>
+                 <div class="row">
+                    <div class="col-6 mb-3"><label>Categoria</label><input type="text" class="form-control" id="p_category"></div>
+                    <div class="col-6 mb-3"><label>Quantidade</label><input type="number" class="form-control" id="p_quantity" value="0"></div>
+                </div>
+                <div class="mb-3"><label>Descrição (IA pode gerar)</label><textarea class="form-control" id="p_desc"></textarea>
+                <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="generateDescBtn">Gerar com IA</button>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer"><button class="btn btn-primary" id="saveProductBtn">Salvar</button></div>
+    </div></div></div>
+
 
     <script>
-        // Initialize Supabase
-        const supabase = window.supabase.createClient(
-            window.ENV.SUPABASE_URL,
-            window.ENV.SUPABASE_ANON_KEY
-        );
-
-        // Global variables
+        // --- CONFIG & INIT ---
+        const supabase = window.supabase.createClient(window.ENV.SUPABASE_URL, window.ENV.SUPABASE_ANON_KEY);
         let currentUser = null;
         let currentSalon = null;
-        let currentStep = 1;
-        let selectedColor = '#8B5CF6';
-        let deferredPrompt = null;
-        let chatHistory = [];
+        let currentOnboardingStep = 1;
 
-        // PWA Manifest JSON (inline)
-        const manifest = {
-            "name": "BelezaTech Infinite",
-            "short_name": "BelezaTech",
-            "description": "Sistema completo de gestão para salões de beleza",
-            "start_url": "/",
-            "display": "standalone",
-            "background_color": "#8B5CF6",
-            "theme_color": "#8B5CF6",
-            "orientation": "portrait-primary",
-            "icons": [
-                {
-                    "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💇</text></svg>",
-                    "sizes": "192x192",
-                    "type": "image/svg+xml"
-                },
-                {
-                    "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💇</text></svg>",
-                    "sizes": "512x512",
-                    "type": "image/svg+xml"
-                }
-            ]
-        };
-
-        // Service Worker (inline)
-        const serviceWorkerCode = `
-            const CACHE_NAME = 'belezatech-v1';
-            const urlsToCache = [
-                '/',
-                'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css',
-                'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
-                'https://cdn.jsdelivr.net/npm/chart.js',
-                'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js'
-            ];
-
-            self.addEventListener('install', function(event) {
-                event.waitUntil(
-                    caches.open(CACHE_NAME)
-                        .then(function(cache) {
-                            return cache.addAll(urlsToCache);
-                        })
-                );
-            });
-
-            self.addEventListener('fetch', function(event) {
-                event.respondWith(
-                    caches.match(event.request)
-                        .then(function(response) {
-                            if (response) {
-                                return response;
-                            }
-                            return fetch(event.request);
-                        }
-                    )
-                );
-            });
-
-            self.addEventListener('message', function(event) {
-                if (event.data && event.data.type === 'SKIP_WAITING') {
-                    self.skipWaiting();
-                }
-            });
-        `;
-
-        // Initialize app
-        document.addEventListener('DOMContentLoaded', function() {
-            initializePWA();
+        // --- APP INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', async () => {
             initializeApp();
-            initializeChatbot();
-            setupNetworkDetection();
+            initPWA();
+            initChatbot();
         });
 
-        // PWA Functions
-        function initializePWA() {
-            // Register manifest
-            const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
-            const manifestURL = URL.createObjectURL(manifestBlob);
-            const link = document.createElement('link');
-            link.rel = 'manifest';
-            link.href = manifestURL;
-            document.head.appendChild(link);
-
-            // Register service worker
-            if ('serviceWorker' in navigator) {
-                const swBlob = new Blob([serviceWorkerCode], { type: 'application/javascript' });
-                const swURL = URL.createObjectURL(swBlob);
-                
-                navigator.serviceWorker.register(swURL)
-                    .then(function(registration) {
-                        console.log('Service Worker registered successfully:', registration.scope);
-                    })
-                    .catch(function(error) {
-                        console.log('Service Worker registration failed:', error);
-                    });
-            }
-
-            // Listen for install prompt
-            window.addEventListener('beforeinstallprompt', (e) => {
-                e.preventDefault();
-                deferredPrompt = e;
-                showInstallPrompt();
-            });
-
-            // Setup install prompt handlers
-            document.getElementById('installPWA').addEventListener('click', installPWA);
-            document.getElementById('dismissInstall').addEventListener('click', dismissInstall);
-        }
-
-        function showInstallPrompt() {
-            const prompt = document.getElementById('pwaInstallPrompt');
-            prompt.classList.add('show');
-        }
-
-        function installPWA() {
-            if (deferredPrompt) {
-                deferredPrompt.prompt();
-                deferredPrompt.userChoice.then((choiceResult) => {
-                    if (choiceResult.outcome === 'accepted') {
-                        console.log('User accepted the install prompt');
-                    }
-                    deferredPrompt = null;
-                    dismissInstall();
-                });
-            }
-        }
-
-        function dismissInstall() {
-            const prompt = document.getElementById('pwaInstallPrompt');
-            prompt.classList.remove('show');
-        }
-
-        function setupNetworkDetection() {
-            const offlineIndicator = document.getElementById('offlineIndicator');
-            
-            function updateOnlineStatus() {
-                if (!navigator.onLine) {
-                    offlineIndicator.classList.add('show');
-                } else {
-                    offlineIndicator.classList.remove('show');
-                }
-            }
-
-            window.addEventListener('online', updateOnlineStatus);
-            window.addEventListener('offline', updateOnlineStatus);
-            updateOnlineStatus(); // Check initial status
-        }
-
-        // Authentication Functions
         async function initializeApp() {
-            try {
-                // Check for existing session
-                const { data: { session } } = await supabase.auth.getSession();
-                
-                if (session) {
-                    currentUser = session.user;
-                    await loadUserSalon();
-                    
-                    if (currentSalon) {
-                        showDashboard();
-                    } else {
-                        showOnboarding();
-                    }
-                } else {
-                    showAuth();
-                }
-            } catch (error) {
-                console.error('Error initializing app:', error);
-                showAuth();
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                handleUserSession(session.user);
+            } else {
+                showScreen('authScreen');
             }
-
             setupEventListeners();
         }
 
-        async function loadUserSalon() {
-            try {
-                const { data: salon, error } = await supabase
-                    .from('salons')
-                    .select('*')
-                    .eq('user_id', currentUser.id)
-                    .single();
+        async function handleUserSession(user) {
+            currentUser = user;
+            document.getElementById('userEmailDisplay').textContent = user.email.split('@')[0];
+            
+            // Tentar carregar salão do usuário
+            const { data: salon } = await supabase.from('salons').select('*').eq('user_id', user.id).maybeSingle();
 
-                if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-                    throw error;
-                }
-
+            if (salon) {
                 currentSalon = salon;
-                return salon;
-            } catch (error) {
-                console.error('Error loading salon:', error);
-                return null;
+                showScreen('dashboardScreen');
+                updateDashboardUI();
+            } else {
+                showScreen('onboardingScreen');
             }
         }
 
-        function setupEventListeners() {
-            // Auth form
-            document.getElementById('authForm').addEventListener('submit', handleAuth);
-            document.getElementById('toggleAuth').addEventListener('click', toggleAuthMode);
-
-            // Auth state changes
-            supabase.auth.onAuthStateChange((event, session) => {
-                if (event === 'SIGNED_IN') {
-                    currentUser = session.user;
-                    loadUserSalon().then(() => {
-                        if (currentSalon) {
-                            showDashboard();
-                        } else {
-                            showOnboarding();
-                        }
-                    });
-                } else if (event === 'SIGNED_OUT') {
-                    currentUser = null;
-                    currentSalon = null;
-                    showAuth();
-                }
+        // --- UTILS ---
+        function showScreen(screenId) {
+            ['authScreen', 'onboardingScreen', 'dashboardScreen', 'publicPortal'].forEach(id => {
+                document.getElementById(id)?.classList.add('hidden');
             });
-
-            // Continue with other event listeners...
+            document.getElementById(screenId)?.classList.remove('hidden');
         }
 
-        async function handleAuth(e) {
-            e.preventDefault();
+        function showLoading(btnId, show = true) {
+            const btn = document.getElementById(btnId);
+            const spinner = btn.querySelector('.spinner-border');
+            const text = btn.querySelector('span:not(.spinner-border)');
             
+            btn.disabled = show;
+            spinner.classList.toggle('d-none', !show);
+            text.style.opacity = show ? 0.5 : 1;
+        }
+
+        // --- EVENT LISTENERS ---
+        function setupEventListeners() {
+            // Auth
+            document.getElementById('authForm').addEventListener('submit', handleAuthSubmit);
+            document.getElementById('toggleAuth').addEventListener('click', toggleAuthMode);
+            document.getElementById('logoutBtn').addEventListener('click', async () => { await supabase.auth.signOut(); });
+
+            // Onboarding
+            document.getElementById('nextStepBtn').addEventListener('click', nextOnboardingStep);
+            document.getElementById('prevStepBtn').addEventListener('click', prevOnboardingStep);
+            document.getElementById('finishOnboardingBtn').addEventListener('click', finishOnboarding);
+            document.getElementById('addServiceRowBtn').addEventListener('click', addServiceRow);
+
+            // Dashboard Navigation
+            document.querySelectorAll('[data-page]').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    showDashboardPage(e.target.closest('a').dataset.page);
+                    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                    e.target.closest('a').classList.add('active');
+                });
+            });
+
+            // Modals (Save Buttons)
+            document.getElementById('saveClientBtn').addEventListener('click', saveClient);
+            document.getElementById('saveServiceBtn').addEventListener('click', saveService);
+            document.getElementById('saveProductBtn').addEventListener('click', saveProduct);
+
+            // Public Portal
+            document.getElementById('bookingDate').addEventListener('change', loadTimeSlots);
+            document.getElementById('publicBookingForm').addEventListener('submit', submitPublicBooking);
+
+            // IA
+            document.getElementById('generateDescBtn').addEventListener('click', generateProductDescription);
+        }
+
+        // --- AUTHENTICATION ---
+        async function handleAuthSubmit(e) {
+            e.preventDefault();
+            showLoading('authSubmitBtn', true);
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const isLogin = document.getElementById('authButtonText').textContent === 'Entrar';
-            
-            showLoading('authSubmitBtn');
-            
+
             try {
-                let result;
-                if (isLogin) {
-                    result = await supabase.auth.signInWithPassword({ 
-                        email, 
-                        password 
-                    });
+                const { data, error } = isLogin 
+                    ? await supabase.auth.signInWithPassword({ email, password })
+                    : await supabase.auth.signUp({ email, password });
+
+                if (error) throw error;
+
+                if (!isLogin && data.user) {
+                    alert('Cadastro realizado! Verifique seu e-mail para confirmar.');
                 } else {
-                    result = await supabase.auth.signUp({ 
-                        email, 
-                        password 
-                    });
-                }
-                
-                if (result.error) {
-                    throw result.error;
+                    handleUserSession(data.user);
                 }
 
-                if (!isLogin && result.data.user && !result.data.session) {
-                    alert('Verifique seu email para confirmar o cadastro!');
-                }
-                
             } catch (error) {
-                console.error('Authentication error:', error);
-                alert('Erro na autenticação: ' + error.message);
+                alert(error.message);
             } finally {
-                hideLoading('authSubmitBtn');
+                showLoading('authSubmitBtn', false);
             }
         }
 
-        function toggleAuthMode() {
-            const button = document.getElementById('authButtonText');
+        function toggleAuthMode(e) {
+            e.preventDefault();
+            const btnText = document.getElementById('authButtonText');
             const link = document.getElementById('toggleAuth');
-            
-            if (button.textContent === 'Entrar') {
-                button.textContent = 'Cadastrar';
-                link.textContent = 'Já tem conta? Faça login';
+            if (btnText.textContent === 'Entrar') {
+                btnText.textContent = 'Cadastrar';
+                link.textContent = 'Já tem conta? Entre';
             } else {
-                button.textContent = 'Entrar';
+                btnText.textContent = 'Entrar';
                 link.textContent = 'Não tem conta? Cadastre-se';
             }
         }
 
-        // Salon Management
-        async function saveSalonData(salonData) {
-            try {
-                const { data, error } = await supabase
-                    .from('salons')
-                    .insert([{
-                        ...salonData,
-                        user_id: currentUser.id
-                    }])
-                    .select()
-                    .single();
-
-                if (error) throw error;
-
-                currentSalon = data;
-                return data;
-            } catch (error) {
-                console.error('Error saving salon:', error);
-                throw error;
-            }
+        // --- ONBOARDING ---
+        function updateOnboardingUI() {
+            document.querySelectorAll('.onboarding-step').forEach(s => s.classList.add('hidden'));
+            document.getElementById(`onboardingStep${currentOnboardingStep}`).classList.remove('hidden');
+            
+            document.getElementById('prevStepBtn').disabled = currentOnboardingStep === 1;
+            document.getElementById('nextStepBtn').classList.toggle('hidden', currentOnboardingStep === 3);
+            document.getElementById('finishOnboardingBtn').classList.toggle('hidden', currentOnboardingStep < 3);
+        }
+        function nextOnboardingStep() { if (currentOnboardingStep < 3) { currentOnboardingStep++; updateOnboardingUI(); } }
+        function prevOnboardingStep() { if (currentOnboardingStep > 1) { currentOnboardingStep--; updateOnboardingUI(); } }
+        
+        function addServiceRow() {
+            const list = document.getElementById('initialServicesList');
+            const div = document.createElement('div');
+            div.className = 'service-row row mb-2';
+            div.innerHTML = `
+                <div class="col-5"><input type="text" class="form-control" placeholder="Nome"></div>
+                <div class="col-3"><input type="number" class="form-control" placeholder="Preço"></div>
+                <div class="col-4"><input type="number" class="form-control" placeholder="Minutos"></div>
+            `;
+            list.appendChild(div);
         }
 
-        async function saveServices(services) {
+        async function finishOnboarding() {
+            showLoading('finishOnboardingBtn', true);
             try {
-                const servicesWithSalonId = services.map(service => ({
-                    ...service,
-                    salon_id: currentSalon.id
-                }));
+                // 1. Salvar Salão
+                const { data: salon, error: sError } = await supabase.from('salons').insert([{
+                    user_id: currentUser.id,
+                    name: document.getElementById('salonName').value,
+                    phone: document.getElementById('salonPhone').value,
+                    address: document.getElementById('salonAddress').value,
+                    open_time: document.getElementById('salonOpen').value,
+                    close_time: document.getElementById('salonClose').value,
+                    primary_color: document.getElementById('salonColor').value,
+                    // Logo upload seria feito aqui via Storage
+                }]).select().single();
 
-                const { data, error } = await supabase
-                    .from('services')
-                    .insert(servicesWithSalonId)
-                    .select();
+                if (sError) throw sError;
+                currentSalon = salon;
 
-                if (error) throw error;
-                return data;
-            } catch (error) {
-                console.error('Error saving services:', error);
-                throw error;
-            }
-        }
-
-        // Load functions for dashboard
-        async function loadServices() {
-            try {
-                const { data, error } = await supabase
-                    .from('services')
-                    .select('*')
-                    .eq('salon_id', currentSalon.id)
-                    .order('created_at', { ascending: false });
-
-                if (error) throw error;
-
-                const servicesList = document.getElementById('servicesList');
-                if (!data || data.length === 0) {
-                    servicesList.innerHTML = '<div class="col-12"><p class="text-muted text-center">Nenhum serviço cadastrado ainda.</p></div>';
-                    return;
-                }
-
-                servicesList.innerHTML = data.map(service => `
-                    <div class="col-md-6 col-lg-4 mb-3">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between align-items-start mb-3">
-                                    <h6 class="mb-0">${service.name}</h6>
-                                    <span class="badge ${service.active ? 'bg-success' : 'bg-secondary'}">
-                                        ${service.active ? 'Ativo' : 'Inativo'}
-                                    </span>
-                                </div>
-                                <div class="row text-center mb-3">
-                                    <div class="col-6">
-                                        <div class="fw-bold text-primary">R$ ${service.price}</div>
-                                        <small class="text-muted">Preço</small>
-                                    </div>
-                                    <div class="col-6">
-                                        <div class="fw-bold">${service.duration} min</div>
-                                        <small class="text-muted">Duração</small>
-                                    </div>
-                                </div>
-                                <div class="d-flex gap-2">
-                                    <button class="btn btn-outline-primary btn-sm flex-fill" onclick="editService('${service.id}')">
-                                        <i class="fas fa-edit"></i> Editar
-                                    </button>
-                                    <button class="btn btn-outline-danger btn-sm" onclick="deleteService('${service.id}')">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `).join('');
-
-            } catch (error) {
-                console.error('Error loading services:', error);
-                document.getElementById('servicesList').innerHTML = '<div class="col-12"><p class="text-danger text-center">Erro ao carregar serviços.</p></div>';
-            }
-        }
-
-        async function loadClients() {
-            try {
-                const { data, error } = await supabase
-                    .from('clients')
-                    .select('*')
-                    .eq('salon_id', currentSalon.id)
-                    .order('created_at', { ascending: false });
-
-                if (error) throw error;
-
-                const clientsList = document.getElementById('clientsList');
-                if (!data || data.length === 0) {
-                    clientsList.innerHTML = '<div class="col-12"><p class="text-muted text-center">Nenhum cliente cadastrado ainda.</p></div>';
-                    return;
-                }
-
-                clientsList.innerHTML = data.map(client => `
-                    <div class="col-md-6 col-lg-4 mb-3">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <div class="d-flex align-items-center mb-3">
-                                    <div class="client-avatar me-3">
-                                        ${client.name.charAt(0)}
-                                    </div>
-                                    <div>
-                                        <h6 class="mb-0">${client.name}</h6>
-                                        <small class="text-muted">${client.phone}</small>
-                                    </div>
-                                </div>
-                                <div class="row text-center">
-                                    <div class="col-6">
-                                        <div class="fw-bold">${client.total_visits || 0}</div>
-                                        <small class="text-muted">Visitas</small>
-                                    </div>
-                                    <div class="col-6">
-                                        <div class="fw-bold">${client.last_visit ? formatDate(client.last_visit) : 'Nunca'}</div>
-                                        <small class="text-muted">Última visita</small>
-                                    </div>
-                                </div>
-                                <div class="mt-3">
-                                    <button class="btn btn-outline-primary btn-sm me-2" onclick="viewClient('${client.id}')">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                    <button class="btn btn-outline-success btn-sm" onclick="scheduleForClient('${client.id}')">
-                                        <i class="fas fa-calendar-plus"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `).join('');
-
-            } catch (error) {
-                console.error('Error loading clients:', error);
-                document.getElementById('clientsList').innerHTML = '<div class="col-12"><p class="text-danger text-center">Erro ao carregar clientes.</p></div>';
-            }
-        }
-
-        async function loadAppointments() {
-            try {
-                const { data, error } = await supabase
-                    .from('appointments')
-                    .select(`
-                        *,
-                        clients (name, phone),
-                        services (name, price)
-                    `)
-                    .eq('salon_id', currentSalon.id)
-                    .order('appointment_date', { ascending: true })
-                    .order('appointment_time', { ascending: true });
-
-                if (error) throw error;
-                return data || [];
-            } catch (error) {
-                console.error('Error loading appointments:', error);
-                return [];
-            }
-        }
-
-        // AI Functions with Gemini
-        async function generateAIInsight() {
-            try {
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${window.ENV.GEMINI_API_KEY}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        contents: [{
-                            parts: [{
-                                text: `Como especialista em gestão de salões de beleza, gere um insight útil para o dono do salão baseado nos seguintes dados: 
-                                - Salão: ${currentSalon?.name || 'Salão de Beleza'}
-                                - Período: Janeiro 2024
-                                - Faturamento: R$ 12.450
-                                - Agendamentos: 142
-                                - Clientes: 89
-                                
-                                Forneça uma dica específica e acionável em português do Brasil, máximo 2 frases.`
-                            }]
-                        }]
-                    })
+                // 2. Salvar Serviços Iniciais
+                const services = [];
+                document.querySelectorAll('#initialServicesList .service-row').forEach(row => {
+                    const inputs = row.querySelectorAll('input');
+                    if (inputs[0].value) {
+                        services.push({
+                            salon_id: salon.id,
+                            name: inputs[0].value,
+                            price: inputs[1].value || 0,
+                            duration: inputs[2].value || 30
+                        });
+                    }
                 });
 
-                const data = await response.json();
-                
-                if (data.candidates && data.candidates[0] && data.candidates[0].content) {
-                    return data.candidates[0].content.parts[0].text;
+                if (services.length > 0) {
+                    const { error: servError } = await supabase.from('services').insert(services);
+                    if (servError) throw servError;
                 }
-                
-                throw new Error('No insight generated');
-            } catch (error) {
-                console.error('Error generating AI insight:', error);
-                const fallbackInsights = [
-                    'Sexta-feira é seu dia mais lucrativo da semana com 23% do faturamento total.',
-                    'Clientes que fazem escova retornam em média 15 dias. Considere uma campanha de retenção.',
-                    'O serviço "Corte + Escova" tem a maior margem de lucro. Promova mais este combo.',
-                    'Você tem 12% mais agendamentos este mês comparado ao anterior. Parabéns!',
-                    'Horários entre 14h-16h têm baixa ocupação. Considere promoções para estes períodos.'
-                ];
-                return fallbackInsights[Math.floor(Math.random() * fallbackInsights.length)];
+
+                handleUserSession(currentUser);
+
+            } catch (e) {
+                alert('Erro ao salvar: ' + e.message);
+            } finally {
+                 showLoading('finishOnboardingBtn', false);
             }
         }
 
-        // Utility Functions
-        function showLoading(elementId) {
-            const element = document.getElementById(elementId);
-            element.classList.add('loading');
+        // --- DASHBOARD ---
+        function updateDashboardUI() {
+            document.getElementById('dashboardSalonName').textContent = currentSalon.name;
+            document.documentElement.style.setProperty('--primary-color', currentSalon.primary_color);
             
-            const spinner = element.querySelector('.spinner-border');
-            if (spinner) {
-                spinner.classList.remove('d-none');
-            }
-            
-            const text = element.querySelector('span:not(.spinner-border)');
-            if (text) {
-                text.style.opacity = '0.6';
-            }
-        }
+            // Public Link
+            const publicUrl = `${window.location.origin}/?salon=${currentSalon.id}`;
+            document.getElementById('publicLink').value = publicUrl;
+            document.getElementById('viewPublicPortalBtn').href = publicUrl;
 
-        function hideLoading(elementId) {
-            const element = document.getElementById(elementId);
-            element.classList.remove('loading');
-            
-            const spinner = element.querySelector('.spinner-border');
-            if (spinner) {
-                spinner.classList.add('d-none');
-            }
-            
-            const text = element.querySelector('span:not(.spinner-border)');
-            if (text) {
-                text.style.opacity = '1';
-            }
-        }
-
-        function formatDate(dateString) {
-            const date = new Date(dateString);
-            return date.toLocaleDateString('pt-BR');
-        }
-
-        function showAuth() {
-            document.getElementById('authScreen').classList.remove('hidden');
-            document.getElementById('onboardingScreen').classList.add('hidden');
-            document.getElementById('dashboardScreen').classList.add('hidden');
-            document.getElementById('publicPortal').classList.add('hidden');
-        }
-
-        function showOnboarding() {
-            document.getElementById('authScreen').classList.add('hidden');
-            document.getElementById('onboardingScreen').classList.remove('hidden');
-            document.getElementById('dashboardScreen').classList.add('hidden');
-            document.getElementById('publicPortal').classList.add('hidden');
-        }
-
-        function showDashboard() {
-            document.getElementById('authScreen').classList.add('hidden');
-            document.getElementById('onboardingScreen').classList.add('hidden');
-            document.getElementById('dashboardScreen').classList.remove('hidden');
-            document.getElementById('publicPortal').classList.add('hidden');
-            
-            // Load salon data into sidebar
-            if (currentSalon) {
-                document.getElementById('sidebarSalonName').textContent = currentSalon.name;
-                if (currentSalon.logo) {
-                    const logoImg = document.getElementById('sidebarLogo');
-                    logoImg.src = currentSalon.logo;
-                    logoImg.style.display = 'block';
-                }
-                
-                // Apply salon colors
-                applyBrandColors(currentSalon.primary_color);
-            }
-            
             loadDashboardData();
         }
 
-        function applyBrandColors(color) {
-            if (!color) return;
-            
-            const root = document.documentElement;
-            root.style.setProperty('--primary-color', color);
+        function showDashboardPage(page) {
+            document.querySelectorAll('.dashboard-page').forEach(p => p.classList.add('hidden'));
+            document.getElementById(`page-${page}`).classList.remove('hidden');
+
+            // Load data based on page
+            if (page === 'clients') loadClients();
+            if (page === 'services') loadServices();
+            if (page === 'stock') loadProducts();
         }
 
         async function loadDashboardData() {
-            // Load KPIs, charts, insights, etc.
-            updateKPIs();
-            loadRevenueChart();
-            loadAIInsights();
-            loadTodayAppointments();
+             // Placeholder: Buscar dados reais do Supabase
+             document.getElementById('kpiRevenue').textContent = 'R$ 1.250,00';
+             document.getElementById('kpiAppointments').textContent = '12';
+             
+             // Load IA Insight
+             const insightP = document.getElementById('aiInsight');
+             try {
+                // Simples chamada Gemini (em prod, isso deve ser via Edge Function para segurança)
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${window.ENV.GEMINI_API_KEY}`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ contents: [{ parts: [{ text: "Dê uma dica curta de gestão para salão de beleza." }] }] })
+                });
+                const data = await response.json();
+                insightP.textContent = data.candidates[0].content.parts[0].text;
+             } catch(e) { insightP.textContent = "Erro ao carregar insight IA."; }
+
+             // Load Chart
+             new Chart(document.getElementById('revenueChart'), {
+                 type: 'bar', data: { labels: ['Seg','Ter','Qua'], datasets: [{ label: 'Faturamento', data: [300, 450, 500] }]}
+             });
         }
 
-        async function updateKPIs() {
-            // Implementation for real KPIs from Supabase
-            // For now, using demo data
-            const demoData = {
-                totalRevenue: 'R$ 12.450',
-                totalAppointments: 142,
-                totalClients: 89,
-                todayAppointments: 8
-            };
-            
-            document.getElementById('totalRevenue').textContent = demoData.totalRevenue;
-            document.getElementById('totalAppointments').textContent = demoData.totalAppointments;
-            document.getElementById('totalClients').textContent = demoData.totalClients;
-            document.getElementById('todayAppointments').textContent = demoData.todayAppointments;
-        }
-
-        function loadRevenueChart() {
-            const ctx = document.getElementById('revenueChart')?.getContext('2d');
-            if (!ctx) return;
-            
-            // Demo data for the last 7 days
-            const data = {
-                labels: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'],
-                datasets: [{
-                    label: 'Faturamento',
-                    data: [850, 920, 1100, 680, 1200, 1450, 980],
-                    borderColor: selectedColor,
-                    backgroundColor: selectedColor + '20',
-                    tension: 0.4
-                }]
-            };
-            
-            new Chart(ctx, {
-                type: 'line',
-                data: data,
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value) {
-                                    return 'R$ ' + value;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        async function loadAIInsights() {
-            const insightText = document.getElementById('aiInsightText');
-            if (!insightText) return;
-            
-            insightText.textContent = 'Carregando insights...';
-            
-            try {
-                const insight = await generateAIInsight();
-                insightText.textContent = insight;
-            } catch (error) {
-                insightText.textContent = 'Erro ao carregar insights. Tente novamente.';
-            }
-        }
-
-        function loadTodayAppointments() {
-            const container = document.getElementById('todayAppointmentsList');
-            if (!container) return;
-            
-            // Demo appointments for today
-            const appointments = [
-                { time: '09:00', client: 'Maria Silva', service: 'Corte Feminino', status: 'confirmed' },
-                { time: '10:30', client: 'Ana Costa', service: 'Escova + Hidratação', status: 'confirmed' },
-                { time: '14:00', client: 'Juliana Santos', service: 'Coloração', status: 'pending' },
-                { time: '15:30', client: 'Carla Oliveira', service: 'Corte + Escova', status: 'confirmed' },
-                { time: '17:00', client: 'Fernanda Lima', service: 'Manicure', status: 'pending' }
-            ];
-            
-            if (appointments.length === 0) {
-                container.innerHTML = '<p class="text-muted">Nenhum agendamento para hoje.</p>';
-                return;
-            }
-            
-            container.innerHTML = appointments.map(apt => `
-                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                    <div>
-                        <strong>${apt.time}</strong> - ${apt.client}
-                        <br><small class="text-muted">${apt.service}</small>
-                    </div>
-                    <span class="badge ${apt.status === 'confirmed' ? 'bg-success' : 'bg-warning'}">
-                        ${apt.status === 'confirmed' ? 'Confirmado' : 'Pendente'}
-                    </span>
-                </div>
+        // --- CRUD: CLIENTES ---
+        async function loadClients() {
+            const { data } = await supabase.from('clients').select('*').eq('salon_id', currentSalon.id).order('name');
+            const tbody = document.getElementById('clientsTableBody');
+            tbody.innerHTML = data.map(c => `
+                <tr>
+                    <td>${c.name}</td><td>${c.phone}</td><td>${c.last_visit || '-'}</td>
+                    <td><button class="btn btn-sm btn-outline-danger" onclick="deleteClient('${c.id}')"><i class="fas fa-trash"></i></button></td>
+                </tr>
             `).join('');
         }
-
-        // Chatbot functions (simplified)
-        function initializeChatbot() {
-            const toggle = document.getElementById('chatbotToggle');
-            const window = document.getElementById('chatbotWindow');
-            const close = document.getElementById('closeChatbot');
-            const input = document.getElementById('chatInput');
-            const sendBtn = document.getElementById('chatSendBtn');
-
-            toggle.addEventListener('click', () => {
-                window.style.display = window.style.display === 'flex' ? 'none' : 'flex';
-            });
-
-            close.addEventListener('click', () => {
-                window.style.display = 'none';
-            });
-
-            sendBtn.addEventListener('click', sendChatMessage);
-            input.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    sendChatMessage();
-                }
-            });
-
-            chatHistory = [
-                {
-                    type: 'bot',
-                    message: 'Olá! 👋 Sou o assistente inteligente do BelezaTech. Como posso ajudar você hoje?',
-                    timestamp: new Date()
-                }
-            ];
+        async function saveClient() {
+            const data = { salon_id: currentSalon.id, name: getVal('c_name'), phone: getVal('c_phone'), email: getVal('c_email'), notes: getVal('c_notes') };
+            await supabase.from('clients').insert([data]);
+            bootstrap.Modal.getInstance(document.getElementById('clientModal')).hide();
+            loadClients();
         }
+        async function deleteClient(id) { if(confirm('Excluir?')) { await supabase.from('clients').delete().eq('id', id); loadClients(); }}
 
-        function sendChatMessage() {
-            const input = document.getElementById('chatInput');
-            const message = input.value.trim();
-            
-            if (message) {
-                addChatMessage('user', message);
-                input.value = '';
-                
-                // Process message with AI
-                processChatMessage(message);
-            }
-        }
-
-        function addChatMessage(type, message) {
-            const container = document.getElementById('chatbotMessages');
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `chat-message ${type}`;
-            
-            messageDiv.innerHTML = `
-                <div class="message-bubble ${type}">
-                    ${message}
-                </div>
-            `;
-            
-            container.appendChild(messageDiv);
-            container.scrollTop = container.scrollHeight;
-            
-            chatHistory.push({
-                type: type,
-                message: message,
-                timestamp: new Date()
-            });
-        }
-
-        async function processChatMessage(message) {
-            // Show typing indicator
-            const typingDiv = document.createElement('div');
-            typingDiv.className = 'chat-message bot typing-message';
-            typingDiv.innerHTML = `
-                <div class="typing-indicator">
-                    <div class="typing-dots">
-                        <div class="typing-dot"></div>
-                        <div class="typing-dot"></div>
-                        <div class="typing-dot"></div>
+         // --- CRUD: SERVIÇOS ---
+         async function loadServices() {
+            const { data } = await supabase.from('services').select('*').eq('salon_id', currentSalon.id);
+            document.getElementById('servicesGrid').innerHTML = data.map(s => `
+                <div class="col-md-4 mb-3">
+                    <div class="card p-3 ${s.active ? '' : 'bg-light'}">
+                        <h6>${s.name}</h6>
+                        <p class="mb-1">R$ ${s.price} • ${s.duration} min</p>
+                        <button class="btn btn-sm btn-danger" onclick="deleteService('${s.id}')">Excluir</button>
                     </div>
                 </div>
-            `;
-            
-            const container = document.getElementById('chatbotMessages');
-            container.appendChild(typingDiv);
-            container.scrollTop = container.scrollHeight;
-            
-            // Simulate processing delay
-            await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
-            
-            // Remove typing indicator
-            container.removeChild(typingDiv);
-            
-            // Generate response
-            const response = generateChatResponse(message);
-            addChatMessage('bot', response);
+            `).join('');
+         }
+         async function saveService() {
+             const data = { salon_id: currentSalon.id, name: getVal('s_name'), price: getVal('s_price'), duration: getVal('s_duration'), active: document.getElementById('s_active').checked };
+             await supabase.from('services').insert([data]);
+             bootstrap.Modal.getInstance(document.getElementById('serviceModal')).hide();
+             loadServices();
+         }
+         async function deleteService(id) { await supabase.from('services').delete().eq('id', id); loadServices(); }
+
+         // --- CRUD: ESTOQUE (Com IA) ---
+         async function loadProducts() {
+             const { data } = await supabase.from('products').select('*').eq('salon_id', currentSalon.id);
+             document.getElementById('productsGrid').innerHTML = data.map(p => `
+                <div class="col-md-4 mb-3"><div class="card p-3">
+                    <h6>${p.name} <span class="badge bg-secondary">${p.category}</span></h6>
+                    <p>Qtd: ${p.quantity}</p>
+                </div></div>
+             `).join('');
+         }
+         async function saveProduct() {
+             const data = { salon_id: currentSalon.id, name: getVal('p_name'), category: getVal('p_category'), quantity: getVal('p_quantity'), description: getVal('p_desc') };
+             await supabase.from('products').insert([data]);
+             bootstrap.Modal.getInstance(document.getElementById('productModal')).hide();
+             loadProducts();
+         }
+         async function generateProductDescription() {
+             const name = getVal('p_name');
+             if (!name) return;
+             // Chamada IA
+             document.getElementById('p_desc').value = `Descrição IA para ${name}... (Implementar chamada real)`;
+         }
+
+         function getVal(id) { return document.getElementById(id).value; }
+
+
+        // --- PORTAL PÚBLICO (Client View) ---
+        async function loadPublicPortal(salonId) {
+            showScreen('publicPortal');
+            const { data: salon } = await supabase.from('salons').select('*').eq('id', salonId).single();
+            if (!salon) return alert('Salão não encontrado');
+
+            document.getElementById('publicSalonName').textContent = salon.name;
+            document.documentElement.style.setProperty('--primary-color', salon.primary_color);
+
+            // Carregar serviços
+            const { data: services } = await supabase.from('services').select('*').eq('salon_id', salonId).eq('active', true);
+            const select = document.getElementById('bookingService');
+            select.innerHTML = services.map(s => `<option value="${s.id}">${s.name} (R$ ${s.price})</option>`).join('');
+
+            // Configurar data mínima
+            document.getElementById('bookingDate').min = new Date().toISOString().split('T')[0];
         }
 
-        function generateChatResponse(message) {
-            const lowerMessage = message.toLowerCase();
-            
-            // Simple pattern matching for demo
-            if (lowerMessage.includes('agendar') || lowerMessage.includes('agendamento')) {
-                return `📅 Claro! Posso te ajudar com o agendamento. Para fazer um agendamento, você precisa:
-1. Escolher o serviço desejado
-2. Selecionar data e horário
-3. Confirmar seus dados
+        async function loadTimeSlots() {
+            const date = getVal('bookingDate');
+            const container = document.getElementById('timeSlots');
+            container.innerHTML = '';
 
-Gostaria de ver nossos serviços disponíveis? 💇‍♀️`;
+            if (!date) return;
+
+            // Simples: Gerar horários das 9h às 17h
+            for (let h = 9; h < 17; h++) {
+                const time = `${h.toString().padStart(2, '0')}:00`;
+                const btn = document.createElement('div');
+                btn.className = 'time-slot available';
+                btn.textContent = time;
+                btn.onclick = () => {
+                    document.querySelectorAll('.time-slot').forEach(s => s.classList.remove('selected'));
+                    btn.classList.add('selected');
+                    document.getElementById('bookingTime').value = time;
+                };
+                container.appendChild(btn);
             }
-            
-            if (lowerMessage.includes('horário') || lowerMessage.includes('horarios')) {
-                return `🕐 Nossos horários de funcionamento:
+        }
+
+        async function submitPublicBooking(e) {
+            e.preventDefault();
+            const salonId = new URLSearchParams(window.location.search).get('salon');
+
+            const data = {
+                salon_id: salonId,
+                service_id: getVal('bookingService'),
+                client_name: getVal('bookingName'),
+                client_phone: getVal('bookingPhone'),
+                booking_date: getVal('bookingDate'),
+                booking_time: getVal('bookingTime'),
+            };
+
+            try {
+                const { error } = await supabase.from('public_bookings').insert([data]);
+                if (error) throw error;
+                alert('Agendamento solicitado! Entraremos em contato.');
+                document.getElementById('publicBookingForm').reset();
+            } catch(e) { alert(e.message); }
+        }
+
+        // Verificar se é acesso ao portal público
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('salon')) {
+            loadPublicPortal(urlParams.get('salon'));
+        }
+
+        // --- PWA ---
+        function initPWA() {
+            let deferredPrompt;
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                document.getElementById('pwaInstallPrompt').classList.add('show');
+            });
+            document.getElementById('installPWA').addEventListener('click', async () => {
+                deferredPrompt.prompt();
+                document.getElementById('pwaInstallPrompt').classList.remove('show');
+            });
+            document.getElementById('dismissInstall').addEventListener('click', () => {
+                 document.getElementById('pwaInstallPrompt').classList.remove('show');
+            });
+        }
+
+        // --- CHATBOT (Simples) ---
+        function initChatbot() {
+            const toggle = document.getElementById('chatbotToggle');
+            const win = document.getElementById('chatbotWindow');
+            toggle.onclick = () => win.style.display = win.style.display === 'flex' ? 'none' : 'flex';
+            document.getElementById('closeChatbot').onclick = () => win.style.display = 'none';
+
+            document.getElementById('chatSendBtn').onclick = sendMessage;
+            document.getElementById('chatInput').onkeypress = (e) => e.key === 'Enter' && sendMessage();
+
+            function sendMessage() {
+                const input = document.getElementById('chatInput');
+                if (!input.value) return;
+
+                addMessage(input.value, 'user');
                 
-**Segunda a Sexta:** ${currentSalon?.open_time || '08:00'} às ${currentSalon?.close_time || '18:00'}
-**Sábado:** ${currentSalon?.open_time || '08:00'} às 17:00
-**Domingo:** Fechado
+                // Resposta simples do bot
+                setTimeout(() => {
+                    addMessage("Recebi sua mensagem. O chatbot completo requer integração com IA (ex: Dialogflow ou Gemini) para respostas complexas.", 'bot');
+                }, 1000);
 
-Qual horário você prefere? Posso fazer a reserva para você! 😊`;
+                input.value = '';
             }
-            
-            if (lowerMessage.includes('serviço') || lowerMessage.includes('servicos')) {
-                return `💇‍♀️ **Nossos Serviços:**
 
-Estou carregando nossa lista de serviços atual... Você pode ver todos os serviços e preços no nosso portal de agendamento!
-
-Qual serviço te interessa? Posso agendar para você! ✨`;
+            function addMessage(text, type) {
+                const div = document.createElement('div');
+                div.className = `chat-message ${type}`;
+                div.innerHTML = `<div class="message-bubble ${type}">${text}</div>`;
+                document.getElementById('chatbotMessages').appendChild(div);
+                document.getElementById('chatbotMessages').scrollTop = 999999;
             }
-            
-            // Default response
-            return `🤖 Entendi que você está perguntando sobre "${message}".
-
-**Posso te ajudar com:**
-• 📅 **"agendar"** - Para fazer agendamentos
-• 🕐 **"horários"** - Ver disponibilidade  
-• 💇‍♀️ **"serviços"** - Lista completa e preços
-• 📋 **"histórico"** - Consultar atendimentos
-
-Como posso ajudar você melhor? 😊`;
         }
 
-        // Placeholder functions
-        function viewClient(id) { console.log('View client:', id); }
-        function scheduleForClient(id) { console.log('Schedule for client:', id); }
-        function editService(id) { console.log('Edit service:', id); }
-        function deleteService(id) { console.log('Delete service:', id); }
-
-        // Logout function
-        async function logout() {
-            await supabase.auth.signOut();
-        }
     </script>
 </body>
 </html>
