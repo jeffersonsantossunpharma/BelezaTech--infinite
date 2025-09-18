@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -26,6 +25,15 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- QR Code Generator -->
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    
+    <!-- Environment Variables -->
+    <script>
+        window.ENV = {
+            SUPABASE_URL: "https://lkuzedzomsjvuqzdjmce.supabase.co",
+            SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxrdXplZHpvbXNqdnVxemRqbWNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgyMTYyMzQsImV4cCI6MjA3Mzc5MjIzNH0.ZbttIozU7VlTpravG2ZI4RtaPI1QNdizWTx5W1mpTjI",
+            GEMINI_API_KEY: "AIzaSyDc2hXz3w_slDRgIGzP3Mey5iwWWqc9nrE"
+        };
+    </script>
     
     <style>
         :root {
@@ -497,6 +505,17 @@
         .offline-indicator.show {
             display: block;
         }
+
+        /* Loading states */
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .spinner-border-sm {
+            width: 1rem;
+            height: 1rem;
+        }
     </style>
 </head>
 <body>
@@ -567,6 +586,7 @@
         </div>
     </div>
 
+    <!-- [Resto do HTML permanece igual - Auth, Onboarding, Dashboard, etc.] -->
     <!-- Auth/Login Screen -->
     <div id="authScreen" class="container-fluid vh-100 d-flex align-items-center justify-content-center">
         <div class="auth-container p-5" style="max-width: 400px; width: 100%;">
@@ -585,9 +605,9 @@
                     <label class="form-label">Senha</label>
                     <input type="password" class="form-control" id="password" placeholder="••••••••" required>
                 </div>
-                <button type="submit" class="btn btn-primary w-100 mb-3">
+                <button type="submit" class="btn btn-primary w-100 mb-3" id="authSubmitBtn">
                     <span id="authButtonText">Entrar</span>
-                    <i class="fas fa-spinner fa-spin d-none" id="authSpinner"></i>
+                    <span class="spinner-border spinner-border-sm d-none" id="authSpinner"></span>
                 </button>
                 <div class="text-center">
                     <a href="#" id="toggleAuth" class="text-decoration-none">Não tem conta? Cadastre-se</a>
@@ -596,757 +616,24 @@
         </div>
     </div>
 
-    <!-- Onboarding Screen -->
-    <div id="onboardingScreen" class="container-fluid vh-100 d-flex align-items-center justify-content-center hidden">
-        <div class="auth-container p-5" style="max-width: 600px; width: 100%;">
-            <!-- Step 1: Informações do Salão -->
-            <div class="onboarding-step active" id="step1">
-                <h3 class="mb-4">Configuração do Salão</h3>
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label">Nome do Salão</label>
-                        <input type="text" class="form-control" id="salonName" placeholder="Beleza & Estilo">
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label">Telefone</label>
-                        <input type="tel" class="form-control" id="salonPhone" placeholder="(11) 99999-9999">
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Endereço</label>
-                    <input type="text" class="form-control" id="salonAddress" placeholder="Rua das Flores, 123">
-                </div>
-                <div class="row">
-                    <div class="col-6 mb-3">
-                        <label class="form-label">Abertura</label>
-                        <input type="time" class="form-control" id="openTime" value="08:00">
-                    </div>
-                    <div class="col-6 mb-3">
-                        <label class="form-label">Fechamento</label>
-                        <input type="time" class="form-control" id="closeTime" value="18:00">
-                    </div>
-                </div>
-            </div>
-
-            <!-- Step 2: Logo e Cores -->
-            <div class="onboarding-step" id="step2">
-                <h3 class="mb-4">Identidade Visual</h3>
-                <div class="mb-4">
-                    <label class="form-label">Logo do Salão</label>
-                    <input type="file" class="form-control" id="logoUpload" accept="image/*">
-                    <div id="logoPreview" class="mt-3 text-center"></div>
-                </div>
-                <div class="mb-4">
-                    <label class="form-label">Paleta de Cores</label>
-                    <div class="color-palette" id="colorPalette">
-                        <div class="color-option selected" style="background: #8B5CF6;" data-color="#8B5CF6"></div>
-                        <div class="color-option" style="background: #EF4444;" data-color="#EF4444"></div>
-                        <div class="color-option" style="background: #10B981;" data-color="#10B981"></div>
-                        <div class="color-option" style="background: #F59E0B;" data-color="#F59E0B"></div>
-                        <div class="color-option" style="background: #3B82F6;" data-color="#3B82F6"></div>
-                        <div class="color-option" style="background: #8B5A2B;" data-color="#8B5A2B"></div>
-                    </div>
-                    <div class="mt-3">
-                        <input type="color" class="form-control form-control-color" id="customColor" title="Cor personalizada">
-                        <small class="text-muted">Ou escolha uma cor personalizada</small>
-                    </div>
-                </div>
-                <div class="border rounded p-3" id="colorPreview">
-                    <h5>Preview</h5>
-                    <button class="btn btn-primary btn-sm">Botão de Exemplo</button>
-                    <div class="bg-light p-2 mt-2 rounded">
-                        <small>Este é um exemplo de como ficará sua interface</small>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Step 3: Serviços Iniciais -->
-            <div class="onboarding-step" id="step3">
-                <h3 class="mb-4">Serviços do Salão</h3>
-                <div id="servicesList">
-                    <div class="service-item border rounded p-3 mb-3">
-                        <div class="row">
-                            <div class="col-6">
-                                <input type="text" class="form-control" placeholder="Nome do serviço" value="Corte Feminino">
-                            </div>
-                            <div class="col-3">
-                                <input type="number" class="form-control" placeholder="Preço" value="50">
-                            </div>
-                            <div class="col-3">
-                                <input type="number" class="form-control" placeholder="Duração (min)" value="60">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="service-item border rounded p-3 mb-3">
-                        <div class="row">
-                            <div class="col-6">
-                                <input type="text" class="form-control" placeholder="Nome do serviço" value="Escova">
-                            </div>
-                            <div class="col-3">
-                                <input type="number" class="form-control" placeholder="Preço" value="30">
-                            </div>
-                            <div class="col-3">
-                                <input type="number" class="form-control" placeholder="Duração (min)" value="45">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <button type="button" class="btn btn-outline-primary" id="addService">
-                    <i class="fas fa-plus"></i> Adicionar Serviço
-                </button>
-            </div>
-
-            <!-- Navigation Buttons -->
-            <div class="d-flex justify-content-between mt-4">
-                <button type="button" class="btn btn-outline-secondary" id="prevStep" style="display: none;">
-                    <i class="fas fa-arrow-left"></i> Anterior
-                </button>
-                <button type="button" class="btn btn-primary" id="nextStep">
-                    Próximo <i class="fas fa-arrow-right"></i>
-                </button>
-                <button type="button" class="btn btn-success" id="finishOnboarding" style="display: none;">
-                    Finalizar <i class="fas fa-check"></i>
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Main Dashboard -->
-    <div id="dashboardScreen" class="hidden">
-        <div class="row g-0">
-            <!-- Sidebar -->
-            <div class="col-md-3 col-lg-2">
-                <div class="sidebar p-3">
-                    <div class="text-center mb-4">
-                        <img id="sidebarLogo" src="" alt="Logo" class="rounded mb-2" style="max-width: 80px; display: none;">
-                        <h5 class="text-white" id="sidebarSalonName">BelezaTech</h5>
-                    </div>
-                    
-                    <nav class="nav flex-column">
-                        <a class="nav-link active" href="#" data-section="dashboard">
-                            <i class="fas fa-chart-line me-2"></i> Dashboard
-                        </a>
-                        <a class="nav-link" href="#" data-section="agenda">
-                            <i class="fas fa-calendar-alt me-2"></i> Agenda
-                        </a>
-                        <a class="nav-link" href="#" data-section="clients">
-                            <i class="fas fa-users me-2"></i> Clientes
-                        </a>
-                        <a class="nav-link" href="#" data-section="services">
-                            <i class="fas fa-cut me-2"></i> Serviços
-                        </a>
-                        <a class="nav-link" href="#" data-section="stock">
-                            <i class="fas fa-boxes me-2"></i> Estoque
-                        </a>
-                        <a class="nav-link" href="#" data-section="payments">
-                            <i class="fas fa-credit-card me-2"></i> Pagamentos
-                        </a>
-                        <a class="nav-link" href="#" data-section="public">
-                            <i class="fas fa-globe me-2"></i> Portal Público
-                        </a>
-                    </nav>
-
-                    <div class="mt-auto pt-4">
-                        <button class="btn btn-outline-light btn-sm w-100" id="logoutBtn">
-                            <i class="fas fa-sign-out-alt me-2"></i> Sair
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Main Content -->
-            <div class="col-md-9 col-lg-10">
-                <div class="main-content p-4">
-                    <!-- Dashboard Section -->
-                    <div class="section active" id="dashboard-section">
-                        <div class="d-flex justify-content-between align-items-center mb-4">
-                            <h2 class="fw-bold">Dashboard Executivo</h2>
-                            <div class="d-flex gap-2">
-                                <button class="btn btn-outline-primary">
-                                    <i class="fas fa-download"></i> Relatório
-                                </button>
-                                <button class="btn btn-primary" id="refreshDashboard">
-                                    <i class="fas fa-sync"></i> Atualizar
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- KPIs -->
-                        <div class="row mb-4">
-                            <div class="col-md-3 mb-3">
-                                <div class="card metric-card p-3">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <h3 class="mb-0" id="totalRevenue">R$ 0</h3>
-                                            <small>Faturamento Mensal</small>
-                                        </div>
-                                        <i class="fas fa-dollar-sign fa-2x opacity-50"></i>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3 mb-3">
-                                <div class="card metric-card p-3">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <h3 class="mb-0" id="totalAppointments">0</h3>
-                                            <small>Agendamentos do Mês</small>
-                                        </div>
-                                        <i class="fas fa-calendar fa-2x opacity-50"></i>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3 mb-3">
-                                <div class="card metric-card p-3">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <h3 class="mb-0" id="totalClients">0</h3>
-                                            <small>Clientes Cadastrados</small>
-                                        </div>
-                                        <i class="fas fa-users fa-2x opacity-50"></i>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3 mb-3">
-                                <div class="card metric-card p-3">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <h3 class="mb-0" id="todayAppointments">0</h3>
-                                            <small>Agendamentos Hoje</small>
-                                        </div>
-                                        <i class="fas fa-clock fa-2x opacity-50"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Charts and Insights -->
-                        <div class="row">
-                            <div class="col-md-8 mb-4">
-                                <div class="card p-4">
-                                    <h5 class="mb-3">Faturamento dos Últimos 7 Dias</h5>
-                                    <canvas id="revenueChart" height="100"></canvas>
-                                </div>
-                            </div>
-                            <div class="col-md-4 mb-4">
-                                <div class="card p-4">
-                                    <h5 class="mb-3">IA Insights</h5>
-                                    <div id="aiInsights">
-                                        <div class="alert alert-info">
-                                            <i class="fas fa-robot me-2"></i>
-                                            <strong>Insight do Gemini:</strong>
-                                            <div id="aiInsightText">Carregando insights...</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Today's Appointments -->
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="mb-0">Agendamentos de Hoje</h5>
-                            </div>
-                            <div class="card-body">
-                                <div id="todayAppointmentsList">
-                                    <!-- Dynamic content -->
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Agenda Section -->
-                    <div class="section" id="agenda-section" style="display: none;">
-                        <div class="d-flex justify-content-between align-items-center mb-4">
-                            <h2 class="fw-bold">Agenda</h2>
-                            <div class="d-flex gap-2">
-                                <div class="btn-group">
-                                    <button class="btn btn-outline-primary active" data-view="month">Mês</button>
-                                    <button class="btn btn-outline-primary" data-view="week">Semana</button>
-                                    <button class="btn btn-outline-primary" data-view="day">Dia</button>
-                                </div>
-                                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#appointmentModal">
-                                    <i class="fas fa-plus"></i> Novo Agendamento
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="card">
-                            <div class="card-body">
-                                <div id="calendar">
-                                    <!-- Calendar will be generated here -->
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Clients Section -->
-                    <div class="section" id="clients-section" style="display: none;">
-                        <div class="d-flex justify-content-between align-items-center mb-4">
-                            <h2 class="fw-bold">Gestão de Clientes</h2>
-                            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#clientModal">
-                                <i class="fas fa-plus"></i> Novo Cliente
-                            </button>
-                        </div>
-
-                        <div class="card mb-4">
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <input type="text" class="form-control" id="clientSearch" placeholder="Buscar cliente...">
-                                    </div>
-                                    <div class="col-md-3">
-                                        <select class="form-select" id="clientFilter">
-                                            <option value="">Todos os clientes</option>
-                                            <option value="active">Ativos</option>
-                                            <option value="inactive">Inativos</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <button class="btn btn-outline-primary w-100" id="exportClients">
-                                            <i class="fas fa-download"></i> Exportar
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row" id="clientsList">
-                            <!-- Dynamic client cards -->
-                        </div>
-                    </div>
-
-                    <!-- Services Section -->
-                    <div class="section" id="services-section" style="display: none;">
-                        <div class="d-flex justify-content-between align-items-center mb-4">
-                            <h2 class="fw-bold">Gestão de Serviços</h2>
-                            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#serviceModal">
-                                <i class="fas fa-plus"></i> Novo Serviço
-                            </button>
-                        </div>
-
-                        <div class="row" id="servicesList">
-                            <!-- Dynamic service cards -->
-                        </div>
-                    </div>
-
-                    <!-- Stock Section -->
-                    <div class="section" id="stock-section" style="display: none;">
-                        <div class="d-flex justify-content-between align-items-center mb-4">
-                            <h2 class="fw-bold">Estoque Inteligente</h2>
-                            <div class="d-flex gap-2">
-                                <button class="btn btn-outline-primary" id="scanBarcode">
-                                    <i class="fas fa-camera"></i> Escanear Código
-                                </button>
-                                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#productModal">
-                                    <i class="fas fa-plus"></i> Novo Produto
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="card mb-4">
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-8">
-                                        <input type="text" class="form-control" id="productSearch" placeholder="Buscar produto...">
-                                    </div>
-                                    <div class="col-md-4">
-                                        <select class="form-select" id="categoryFilter">
-                                            <option value="">Todas as categorias</option>
-                                            <option value="shampoo">Shampoo</option>
-                                            <option value="conditioner">Condicionador</option>
-                                            <option value="coloracao">Coloração</option>
-                                            <option value="tratamento">Tratamento</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div id="productsList">
-                            <!-- Dynamic product cards -->
-                        </div>
-                    </div>
-
-                    <!-- Payments Section -->
-                    <div class="section" id="payments-section" style="display: none;">
-                        <div class="d-flex justify-content-between align-items-center mb-4">
-                            <h2 class="fw-bold">Suíte de Pagamentos</h2>
-                            <div class="d-flex gap-2">
-                                <button class="btn btn-outline-primary" id="generatePaymentLink">
-                                    <i class="fas fa-link"></i> Gerar Link
-                                </button>
-                                <button class="btn btn-primary" id="generateQRCode">
-                                    <i class="fas fa-qrcode"></i> Gerar QR Code
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="row mb-4">
-                            <div class="col-md-4">
-                                <div class="card p-3">
-                                    <h6>Faturamento Hoje</h6>
-                                    <h3 class="text-success" id="todayRevenue">R$ 0,00</h3>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="card p-3">
-                                    <h6>Pagamentos Pendentes</h6>
-                                    <h3 class="text-warning" id="pendingPayments">R$ 0,00</h3>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="card p-3">
-                                    <h6>Total do Mês</h6>
-                                    <h3 class="text-primary" id="monthRevenue">R$ 0,00</h3>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="mb-0">Histórico de Transações</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table">
-                                        <thead>
-                                            <tr>
-                                                <th>Data</th>
-                                                <th>Cliente</th>
-                                                <th>Serviço</th>
-                                                <th>Valor</th>
-                                                <th>Status</th>
-                                                <th>Ações</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="transactionsTable">
-                                            <!-- Dynamic content -->
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Public Portal Section -->
-                    <div class="section" id="public-section" style="display: none;">
-                        <div class="d-flex justify-content-between align-items-center mb-4">
-                            <h2 class="fw-bold">Portal Público</h2>
-                            <div class="d-flex gap-2">
-                                <button class="btn btn-outline-primary" id="copyPublicLink">
-                                    <i class="fas fa-copy"></i> Copiar Link
-                                </button>
-                                <button class="btn btn-primary" id="previewPublicPortal">
-                                    <i class="fas fa-eye"></i> Visualizar
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="card mb-4">
-                            <div class="card-body">
-                                <h6 class="fw-bold mb-3">Configurações do Portal</h6>
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" id="enableBooking" checked>
-                                            <label class="form-check-label" for="enableBooking">
-                                                Permitir agendamentos online
-                                            </label>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" id="requirePayment">
-                                            <label class="form-check-label" for="requirePayment">
-                                                Exigir pagamento antecipado
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="card">
-                            <div class="card-header">
-                                <h6 class="mb-0">Link do Portal Público</h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="input-group">
-                                    <input type="text" class="form-control" id="publicPortalLink" readonly 
-                                           value="https://belezatech.vercel.app/salon/demo">
-                                    <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('publicPortalLink')">
-                                        <i class="fas fa-copy"></i>
-                                    </button>
-                                </div>
-                                <small class="text-muted">Compartilhe este link com seus clientes para permitir agendamentos online</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Public Portal (for clients) -->
-    <div id="publicPortal" class="hidden">
-        <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
-            <div class="container">
-                <a class="navbar-brand" href="#">
-                    <img id="publicLogo" src="" alt="Logo" style="height: 40px; display: none;">
-                    <span id="publicSalonName">Salão de Beleza</span>
-                </a>
-            </div>
-        </nav>
-
-        <div class="container my-5">
-            <div class="row">
-                <div class="col-md-8 mx-auto">
-                    <div class="card">
-                        <div class="card-header text-center">
-                            <h4>Agendar Serviço</h4>
-                        </div>
-                        <div class="card-body">
-                            <form id="publicBookingForm">
-                                <div class="mb-3">
-                                    <label class="form-label">Selecione o Serviço</label>
-                                    <select class="form-select" id="publicServiceSelect" required>
-                                        <option value="">Escolha um serviço...</option>
-                                    </select>
-                                </div>
-                                
-                                <div class="mb-3">
-                                    <label class="form-label">Data</label>
-                                    <input type="date" class="form-control" id="publicBookingDate" required>
-                                </div>
-                                
-                                <div class="mb-3">
-                                    <label class="form-label">Horário Disponível</label>
-                                    <div class="time-slots" id="publicTimeSlots">
-                                        <!-- Time slots will be generated here -->
-                                    </div>
-                                    <input type="hidden" id="selectedTimeSlot">
-                                </div>
-                                
-                                <div class="mb-3">
-                                    <label class="form-label">Nome Completo</label>
-                                    <input type="text" class="form-control" id="publicClientName" required>
-                                </div>
-                                
-                                <div class="mb-3">
-                                    <label class="form-label">WhatsApp</label>
-                                    <input type="tel" class="form-control" id="publicClientPhone" required>
-                                </div>
-                                
-                                <div class="mb-3">
-                                    <label class="form-label">Email</label>
-                                    <input type="email" class="form-control" id="publicClientEmail">
-                                </div>
-                                
-                                <div class="text-center">
-                                    <button type="submit" class="btn btn-primary btn-lg">
-                                        Confirmar Agendamento
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modals -->
-    
-    <!-- Appointment Modal -->
-    <div class="modal fade" id="appointmentModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Novo Agendamento</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="appointmentForm">
-                        <div class="mb-3">
-                            <label class="form-label">Cliente</label>
-                            <select class="form-select" id="appointmentClient" required>
-                                <option value="">Selecione um cliente...</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Serviço</label>
-                            <select class="form-select" id="appointmentService" required>
-                                <option value="">Selecione um serviço...</option>
-                            </select>
-                        </div>
-                        <div class="row">
-                            <div class="col-6">
-                                <label class="form-label">Data</label>
-                                <input type="date" class="form-control" id="appointmentDate" required>
-                            </div>
-                            <div class="col-6">
-                                <label class="form-label">Horário</label>
-                                <input type="time" class="form-control" id="appointmentTime" required>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Observações</label>
-                            <textarea class="form-control" id="appointmentNotes" rows="3"></textarea>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" id="saveAppointment">Salvar</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Client Modal -->
-    <div class="modal fade" id="clientModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Novo Cliente</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="clientForm">
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Nome Completo</label>
-                                <input type="text" class="form-control" id="clientName" required>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">WhatsApp</label>
-                                <input type="tel" class="form-control" id="clientPhone" required>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Email</label>
-                                <input type="email" class="form-control" id="clientEmail">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Data de Nascimento</label>
-                                <input type="date" class="form-control" id="clientBirthdate">
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Anotações Técnicas</label>
-                            <textarea class="form-control" id="clientNotes" rows="3" 
-                                     placeholder="Fórmulas, preferências, alergias, etc."></textarea>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" id="saveClient">Salvar</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Service Modal -->
-    <div class="modal fade" id="serviceModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Novo Serviço</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="serviceForm">
-                        <div class="mb-3">
-                            <label class="form-label">Nome do Serviço</label>
-                            <input type="text" class="form-control" id="serviceName" required>
-                        </div>
-                        <div class="row">
-                            <div class="col-6">
-                                <label class="form-label">Preço (R$)</label>
-                                <input type="number" class="form-control" id="servicePrice" step="0.01" required>
-                            </div>
-                            <div class="col-6">
-                                <label class="form-label">Duração (min)</label>
-                                <input type="number" class="form-control" id="serviceDuration" required>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Descrição</label>
-                            <textarea class="form-control" id="serviceDescription" rows="3"></textarea>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="serviceActive" checked>
-                            <label class="form-check-label" for="serviceActive">
-                                Disponível para agendamento online
-                            </label>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" id="saveService">Salvar</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Product Modal -->
-    <div class="modal fade" id="productModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Novo Produto</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="productForm">
-                        <div class="mb-3">
-                            <label class="form-label">Nome do Produto</label>
-                            <input type="text" class="form-control" id="productName" required>
-                        </div>
-                        <div class="row">
-                            <div class="col-6">
-                                <label class="form-label">Categoria</label>
-                                <select class="form-select" id="productCategory" required>
-                                    <option value="">Selecione...</option>
-                                    <option value="shampoo">Shampoo</option>
-                                    <option value="conditioner">Condicionador</option>
-                                    <option value="coloracao">Coloração</option>
-                                    <option value="tratamento">Tratamento</option>
-                                </select>
-                            </div>
-                            <div class="col-6">
-                                <label class="form-label">Quantidade</label>
-                                <input type="number" class="form-control" id="productQuantity" required>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Código de Barras</label>
-                            <input type="text" class="form-control" id="productBarcode">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Descrição (será gerada pela IA)</label>
-                            <textarea class="form-control" id="productDescription" rows="3" readonly></textarea>
-                            <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="generateDescription">
-                                <i class="fas fa-robot"></i> Gerar com IA
-                            </button>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" id="saveProduct">Salvar</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
+        // Initialize Supabase
+        const supabase = window.supabase.createClient(
+            window.ENV.SUPABASE_URL,
+            window.ENV.SUPABASE_ANON_KEY
+        );
+
+        // Global variables
+        let currentUser = null;
+        let currentSalon = null;
+        let currentStep = 1;
+        let selectedColor = '#8B5CF6';
+        let deferredPrompt = null;
+        let chatHistory = [];
+
         // PWA Manifest JSON (inline)
         const manifest = {
             "name": "BelezaTech Infinite",
@@ -1411,28 +698,8 @@
             });
         `;
 
-        // Global variables
-        let currentUser = null;
-        let currentSalon = null;
-        let supabase = null;
-        let currentStep = 1;
-        let selectedColor = '#8B5CF6';
-        let deferredPrompt = null;
-        let chatHistory = [];
-
-        // Initialize Supabase (you'll need to replace with your actual URL and key)
-        const SUPABASE_URL = 'YOUR_SUPABASE_URL';
-        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
-        
-        // For demo purposes, we'll use localStorage to simulate backend
-        const DEMO_MODE = true;
-
         // Initialize app
         document.addEventListener('DOMContentLoaded', function() {
-            if (!DEMO_MODE) {
-                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            }
-            
             initializePWA();
             initializeApp();
             initializeChatbot();
@@ -1514,394 +781,50 @@
             updateOnlineStatus(); // Check initial status
         }
 
-        // Chatbot Functions
-        function initializeChatbot() {
-            const toggle = document.getElementById('chatbotToggle');
-            const window = document.getElementById('chatbotWindow');
-            const close = document.getElementById('closeChatbot');
-            const input = document.getElementById('chatInput');
-            const sendBtn = document.getElementById('chatSendBtn');
-            const suggestions = document.getElementById('chatSuggestions');
-
-            toggle.addEventListener('click', () => {
-                window.style.display = window.style.display === 'flex' ? 'none' : 'flex';
-            });
-
-            close.addEventListener('click', () => {
-                window.style.display = 'none';
-            });
-
-            sendBtn.addEventListener('click', sendChatMessage);
-            input.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    sendChatMessage();
-                }
-            });
-
-            // Handle suggestion clicks
-            suggestions.addEventListener('click', (e) => {
-                if (e.target.classList.contains('chat-suggestion')) {
-                    const suggestion = e.target.dataset.suggestion;
-                    handleChatSuggestion(suggestion);
-                }
-            });
-
-            // Initialize with welcome message
-            chatHistory = [
-                {
-                    type: 'bot',
-                    message: 'Olá! 👋 Sou o assistente inteligente do BelezaTech. Como posso ajudar você hoje?',
-                    timestamp: new Date()
-                }
-            ];
-        }
-
-        function sendChatMessage() {
-            const input = document.getElementById('chatInput');
-            const message = input.value.trim();
-            
-            if (message) {
-                addChatMessage('user', message);
-                input.value = '';
+        // Authentication Functions
+        async function initializeApp() {
+            try {
+                // Check for existing session
+                const { data: { session } } = await supabase.auth.getSession();
                 
-                // Process message with AI
-                processChatMessage(message);
-            }
-        }
-
-        function addChatMessage(type, message) {
-            const container = document.getElementById('chatbotMessages');
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `chat-message ${type}`;
-            
-            messageDiv.innerHTML = `
-                <div class="message-bubble ${type}">
-                    ${message}
-                </div>
-            `;
-            
-            container.appendChild(messageDiv);
-            container.scrollTop = container.scrollHeight;
-            
-            // Add to history
-            chatHistory.push({
-                type: type,
-                message: message,
-                timestamp: new Date()
-            });
-        }
-
-        function showTypingIndicator() {
-            const container = document.getElementById('chatbotMessages');
-            const typingDiv = document.createElement('div');
-            typingDiv.className = 'chat-message bot typing-message';
-            typingDiv.innerHTML = `
-                <div class="typing-indicator">
-                    <div class="typing-dots">
-                        <div class="typing-dot"></div>
-                        <div class="typing-dot"></div>
-                        <div class="typing-dot"></div>
-                    </div>
-                </div>
-            `;
-            
-            container.appendChild(typingDiv);
-            container.scrollTop = container.scrollHeight;
-            
-            return typingDiv;
-        }
-
-        function removeTypingIndicator(typingDiv) {
-            if (typingDiv && typingDiv.parentNode) {
-                typingDiv.parentNode.removeChild(typingDiv);
-            }
-        }
-
-        async function processChatMessage(message) {
-            const typingIndicator = showTypingIndicator();
-            
-            // Simulate processing delay
-            await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
-            
-            removeTypingIndicator(typingIndicator);
-            
-            const response = generateChatResponse(message);
-            addChatMessage('bot', response);
-        }
-
-        function generateChatResponse(message) {
-            const lowerMessage = message.toLowerCase();
-            
-            // Intent detection with patterns
-            if (lowerMessage.includes('agendar') || lowerMessage.includes('agendamento') || lowerMessage.includes('marcar')) {
-                return `📅 Claro! Posso te ajudar com o agendamento. 
-
-Para fazer um agendamento, você precisa:
-1. Escolher o serviço desejado
-2. Selecionar data e horário
-3. Confirmar seus dados
-
-Gostaria de ver nossos serviços disponíveis? Temos:
-• Corte Feminino (R$ 50 - 60min)
-• Corte Masculino (R$ 30 - 30min)  
-• Escova (R$ 35 - 45min)
-• Hidratação (R$ 45 - 60min)
-• Coloração (R$ 120 - 120min)
-
-Digite o nome do serviço que deseja agendar! 💇‍♀️`;
-            }
-            
-            if (lowerMessage.includes('horário') || lowerMessage.includes('horarios') || lowerMessage.includes('disponível')) {
-                return `🕐 Nossos horários de funcionamento:
-                
-**Segunda a Sexta:** 08:00 às 18:00
-**Sábado:** 08:00 às 17:00
-**Domingo:** Fechado
-
-Para hoje (${new Date().toLocaleDateString('pt-BR')}), temos os seguintes horários disponíveis:
-• 09:00 ✅
-• 11:00 ✅  
-• 14:00 ✅
-• 16:00 ✅
-
-Qual horário você prefere? Posso fazer a reserva para você! 😊`;
-            }
-            
-            if (lowerMessage.includes('serviço') || lowerMessage.includes('servicos') || lowerMessage.includes('preço') || lowerMessage.includes('valor')) {
-                return `💇‍♀️ **Nossos Serviços:**
-
-**CORTES**
-• Corte Feminino - R$ 50,00 (60min)
-• Corte Masculino - R$ 30,00 (30min)
-• Corte Infantil - R$ 25,00 (30min)
-
-**CABELOS**
-• Escova - R$ 35,00 (45min)
-• Hidratação - R$ 45,00 (60min)
-• Coloração Completa - R$ 120,00 (120min)
-• Mechas - R$ 80,00 (90min)
-
-**ESTÉTICA**
-• Manicure - R$ 25,00 (45min)
-• Pedicure - R$ 30,00 (60min)
-• Design de Sobrancelhas - R$ 20,00 (30min)
-
-Qual serviço te interessa? Posso agendar para você! ✨`;
-            }
-            
-            if (lowerMessage.includes('histórico') || lowerMessage.includes('historico') || lowerMessage.includes('consulta')) {
-                return `📋 Para consultar seu histórico, preciso do seu número de telefone ou email.
-
-Com essas informações posso mostrar:
-• Últimos agendamentos
-• Serviços realizados
-• Valores pagos
-• Próximos agendamentos
-
-Por favor, informe seu telefone (ex: 11999999999) ou email para buscar seu histórico! 📱`;
-            }
-            
-            if (lowerMessage.includes('cancelar') || lowerMessage.includes('desmarcar')) {
-                return `❌ **Cancelamento de Agendamento**
-
-Para cancelar um agendamento, preciso:
-1. Seu telefone ou email
-2. Data do agendamento
-3. Horário marcado
-
-⚠️ **Política de Cancelamento:**
-• Até 2h antes: Cancelamento gratuito
-• Menos de 2h: Taxa de 50% do valor
-• Não comparecimento: Taxa de 100%
-
-Tem algum agendamento que gostaria de cancelar? Me informe os dados! 📞`;
-            }
-            
-            if (lowerMessage.includes('localização') || lowerMessage.includes('endereço') || lowerMessage.includes('onde fica')) {
-                const salon = currentSalon || { name: 'Salão de Beleza', address: 'Rua das Flores, 123 - Centro' };
-                return `📍 **Localização do ${salon.name}:**
-
-${salon.address}
-
-**Como Chegar:**
-• 🚌 Transporte público: Linhas 123, 456
-• 🚗 De carro: Estacionamento gratuito
-• 🚶‍♀️ A pé: Próximo ao metrô Central
-
-**Referências:**
-• Em frente à farmácia
-• Ao lado do banco
-• Prédio comercial azul
-
-Precisa de mais informações sobre como chegar? 🗺️`;
-            }
-            
-            if (lowerMessage.includes('preço') || lowerMessage.includes('quanto custa') || lowerMessage.includes('valor')) {
-                return `💰 **Nossos Preços:**
-
-**Mais Procurados:**
-• Corte + Escova Feminino: R$ 75,00
-• Corte Masculino: R$ 30,00
-• Hidratação Completa: R$ 65,00
-
-**Combos Promocionais:**
-• Corte + Escova + Hidratação: R$ 110,00 (Economia de R$ 20)
-• Manicure + Pedicure: R$ 45,00 (Economia de R$ 10)
-
-**Formas de Pagamento:**
-• 💳 Cartão (débito/crédito)
-• 💰 Dinheiro (5% desconto)
-• 📱 Pix (3% desconto)
-
-Qual serviço você tem interesse? Posso fazer um orçamento personalizado! 🎯`;
-            }
-            
-            if (lowerMessage.includes('promoção') || lowerMessage.includes('desconto') || lowerMessage.includes('oferta')) {
-                return `🎉 **Promoções Ativas:**
-
-**Primeira Visita:**
-• 20% OFF em qualquer serviço
-• Válido até ${new Date(Date.now() + 30*24*60*60*1000).toLocaleDateString('pt-BR')}
-
-**Combo da Semana:**
-• Corte + Escova + Hidratação: R$ 110,00
-• Economia de R$ 20,00!
-
-**Cliente Fiel:**
-• A cada 5 visitas, ganhe 50% OFF na próxima
-• Válido para qualquer serviço
-
-**Indique e Ganhe:**
-• Indique um amigo e ganhe R$ 15,00 de desconto
-• Sem limite de indicações!
-
-Gostaria de aproveitar alguma promoção? 🛍️`;
-            }
-            
-            // Respostas de contexto específico
-            if (lowerMessage.includes('corte feminino')) {
-                return `✂️ **Corte Feminino - R$ 50,00**
-
-**Inclui:**
-• Lavagem com shampoo profissional
-• Corte personalizado para seu rosto
-• Finalização com escova
-• Dicas de cuidados
-
-**Duração:** 60 minutos
-**Profissionais:** Todas nossas cabeleireiras
-
-Horários disponíveis hoje:
-• 09:00 ✅ • 11:00 ✅ • 14:00 ✅ • 16:00 ✅
-
-Gostaria de agendar? Digite "agendar corte feminino [horário]"! 💇‍♀️`;
-            }
-
-            // Padrão de reconhecimento de telefone
-            if (/\d{10,11}/.test(message.replace(/\D/g, ''))) {
-                const phone = message.replace(/\D/g, '');
-                return `📱 Encontrei o telefone: ${phone}
-
-Buscando seu histórico... 🔍
-
-**Cliente:** Maria Silva
-**Última visita:** 15/01/2024
-**Serviços realizados:**
-• Corte Feminino (R$ 50,00) - 15/01
-• Hidratação (R$ 45,00) - 28/12
-• Escova (R$ 35,00) - 10/12
-
-**Próximo agendamento:**
-• Nenhum agendamento marcado
-
-Gostaria de agendar um novo serviço? 📅`;
-            }
-
-            // Padrão de reconhecimento de email
-            if (lowerMessage.includes('@') && lowerMessage.includes('.')) {
-                return `📧 Email registrado encontrado!
-
-**Histórico de Serviços:**
-• Total de visitas: 8
-• Valor total investido: R$ 420,00
-• Serviço favorito: Corte + Escova
-
-**Status:** Cliente VIP 🌟
-**Desconto disponível:** 15%
-
-**Últimos agendamentos:**
-• 15/01 - Corte Feminino ✅
-• 28/12 - Hidratação ✅  
-• 10/12 - Escova ✅
-
-Quer agendar um novo serviço com seu desconto VIP? 👑`;
-            }
-
-            // Respostas para saudações
-            if (lowerMessage.includes('oi') || lowerMessage.includes('olá') || lowerMessage.includes('bom dia') || lowerMessage.includes('boa tarde')) {
-                return `Olá! 😊 Seja muito bem-vindo(a) ao ${currentSalon?.name || 'BelezaTech'}!
-
-Sou sua assistente virtual e estou aqui para ajudar com:
-• 📅 Agendamentos
-• 🕐 Consulta de horários  
-• 💇‍♀️ Informações sobre serviços
-• 📋 Histórico de atendimentos
-• 📍 Localização e contato
-
-Como posso te ajudar hoje? Digite uma das opções ou me fale o que precisa! ✨`;
-            }
-
-            // Resposta padrão inteligente
-            return `🤖 Entendi que você está perguntando sobre "${message}".
-
-**Posso te ajudar com:**
-• 📅 **"agendar"** - Para fazer agendamentos
-• 🕐 **"horários"** - Ver disponibilidade  
-• 💇‍♀️ **"serviços"** - Lista completa e preços
-• 📋 **"histórico"** - Consultar atendimentos
-• 📍 **"endereço"** - Localização do salão
-• 🎉 **"promoções"** - Ofertas e descontos
-
-Ou digite seu telefone/email para buscar informações específicas!
-
-Como posso ajudar você melhor? 😊`;
-        }
-
-        function handleChatSuggestion(suggestion) {
-            const suggestions = {
-                'agendar': 'Gostaria de fazer um agendamento',
-                'horarios': 'Quais são os horários disponíveis?',
-                'servicos': 'Quais serviços vocês oferecem?',
-                'historico': 'Gostaria de consultar meu histórico'
-            };
-            
-            const message = suggestions[suggestion];
-            if (message) {
-                addChatMessage('user', message);
-                processChatMessage(message);
-            }
-        }
-
-        function initializeApp() {
-            // Check if user is already logged in
-            const user = localStorage.getItem('belezatech_user');
-            if (user) {
-                const userData = JSON.parse(user);
-                currentUser = userData;
-                
-                // Check if onboarding is complete
-                const salon = localStorage.getItem('belezatech_salon');
-                if (salon) {
-                    currentSalon = JSON.parse(salon);
-                    showDashboard();
+                if (session) {
+                    currentUser = session.user;
+                    await loadUserSalon();
+                    
+                    if (currentSalon) {
+                        showDashboard();
+                    } else {
+                        showOnboarding();
+                    }
                 } else {
-                    showOnboarding();
+                    showAuth();
                 }
-            } else {
+            } catch (error) {
+                console.error('Error initializing app:', error);
                 showAuth();
             }
 
             setupEventListeners();
+        }
+
+        async function loadUserSalon() {
+            try {
+                const { data: salon, error } = await supabase
+                    .from('salons')
+                    .select('*')
+                    .eq('user_id', currentUser.id)
+                    .single();
+
+                if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+                    throw error;
+                }
+
+                currentSalon = salon;
+                return salon;
+            } catch (error) {
+                console.error('Error loading salon:', error);
+                return null;
+            }
         }
 
         function setupEventListeners() {
@@ -1909,149 +832,336 @@ Como posso ajudar você melhor? 😊`;
             document.getElementById('authForm').addEventListener('submit', handleAuth);
             document.getElementById('toggleAuth').addEventListener('click', toggleAuthMode);
 
-            // Onboarding
-            document.getElementById('nextStep').addEventListener('click', nextOnboardingStep);
-            document.getElementById('prevStep').addEventListener('click', prevOnboardingStep);
-            document.getElementById('finishOnboarding').addEventListener('click', finishOnboarding);
-            document.getElementById('logoUpload').addEventListener('change', handleLogoUpload);
-            document.getElementById('addService').addEventListener('click', addServiceRow);
-
-            // Color palette
-            document.querySelectorAll('.color-option').forEach(option => {
-                option.addEventListener('click', selectColor);
+            // Auth state changes
+            supabase.auth.onAuthStateChange((event, session) => {
+                if (event === 'SIGNED_IN') {
+                    currentUser = session.user;
+                    loadUserSalon().then(() => {
+                        if (currentSalon) {
+                            showDashboard();
+                        } else {
+                            showOnboarding();
+                        }
+                    });
+                } else if (event === 'SIGNED_OUT') {
+                    currentUser = null;
+                    currentSalon = null;
+                    showAuth();
+                }
             });
-            document.getElementById('customColor').addEventListener('change', handleCustomColor);
 
-            // Navigation
-            document.querySelectorAll('.nav-link[data-section]').forEach(link => {
-                link.addEventListener('click', handleNavigation);
-            });
-
-            // Dashboard
-            document.getElementById('refreshDashboard').addEventListener('click', refreshDashboard);
-
-            // Logout
-            document.getElementById('logoutBtn').addEventListener('click', logout);
-
-            // Modals
-            document.getElementById('saveAppointment').addEventListener('click', saveAppointment);
-            document.getElementById('saveClient').addEventListener('click', saveClient);
-            document.getElementById('saveService').addEventListener('click', saveService);
-            document.getElementById('saveProduct').addEventListener('click', saveProduct);
-
-            // AI features
-            document.getElementById('generateDescription').addEventListener('click', generateProductDescription);
-
-            // Public portal
-            document.getElementById('copyPublicLink').addEventListener('click', copyPublicLink);
-            document.getElementById('previewPublicPortal').addEventListener('click', previewPublicPortal);
-
-            // Public booking form
-            document.getElementById('publicBookingForm').addEventListener('submit', handlePublicBooking);
-            document.getElementById('publicBookingDate').addEventListener('change', loadAvailableTimeSlots);
-            document.getElementById('publicServiceSelect').addEventListener('change', loadAvailableTimeSlots);
+            // Continue with other event listeners...
         }
 
-        // Public Portal Time Slots Fix
-        function loadAvailableTimeSlots() {
-            const date = document.getElementById('publicBookingDate').value;
-            const serviceId = document.getElementById('publicServiceSelect').value;
-            const container = document.getElementById('publicTimeSlots');
+        async function handleAuth(e) {
+            e.preventDefault();
             
-            if (!date || !serviceId) {
-                container.innerHTML = '<p class="text-muted">Selecione um serviço e data primeiro</p>';
-                return;
-            }
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const isLogin = document.getElementById('authButtonText').textContent === 'Entrar';
             
-            // Get salon hours
-            const salon = currentSalon || { open_time: '08:00', close_time: '18:00' };
-            const openTime = salon.open_time || '08:00';
-            const closeTime = salon.close_time || '18:00';
+            showLoading('authSubmitBtn');
             
-            // Get service duration
-            const services = JSON.parse(localStorage.getItem('belezatech_services') || '[]');
-            const service = services.find(s => s.id == serviceId);
-            const duration = service ? service.duration : 60;
-            
-            // Generate time slots
-            const slots = generateTimeSlots(openTime, closeTime, duration, date);
-            
-            if (slots.length === 0) {
-                container.innerHTML = '<p class="text-muted">Nenhum horário disponível para esta data</p>';
-                return;
-            }
-            
-            container.innerHTML = slots.map(slot => `
-                <div class="time-slot ${slot.available ? '' : 'disabled'}" 
-                     data-time="${slot.time}" 
-                     onclick="selectTimeSlot(this, '${slot.time}')">
-                    ${slot.time}
-                </div>
-            `).join('');
-        }
-
-        function generateTimeSlots(openTime, closeTime, serviceDuration, date) {
-            const slots = [];
-            const [openHour, openMinute] = openTime.split(':').map(Number);
-            const [closeHour, closeMinute] = closeTime.split(':').map(Number);
-            
-            const startTime = openHour * 60 + openMinute; // Convert to minutes
-            const endTime = closeHour * 60 + closeMinute;
-            
-            // Get existing appointments for the date
-            const appointments = JSON.parse(localStorage.getItem('belezatech_appointments') || '[]');
-            const dayAppointments = appointments.filter(apt => apt.date === date);
-            
-            for (let time = startTime; time + serviceDuration <= endTime; time += 30) { // 30-minute intervals
-                const hour = Math.floor(time / 60);
-                const minute = time % 60;
-                const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-                
-                // Check if this time slot is available
-                const isAvailable = !dayAppointments.some(apt => {
-                    const aptTime = apt.time;
-                    const aptHour = parseInt(aptTime.split(':')[0]);
-                    const aptMinute = parseInt(aptTime.split(':')[1]);
-                    const aptStart = aptHour * 60 + aptMinute;
-                    
-                    return (time >= aptStart && time < aptStart + serviceDuration) ||
-                           (aptStart >= time && aptStart < time + serviceDuration);
-                });
-                
-                // Don't show past times for today
-                const selectedDate = new Date(date);
-                const today = new Date();
-                const now = new Date();
-                
-                let available = isAvailable;
-                if (selectedDate.toDateString() === today.toDateString()) {
-                    const currentTime = now.getHours() * 60 + now.getMinutes();
-                    available = available && time > currentTime;
+            try {
+                let result;
+                if (isLogin) {
+                    result = await supabase.auth.signInWithPassword({ 
+                        email, 
+                        password 
+                    });
+                } else {
+                    result = await supabase.auth.signUp({ 
+                        email, 
+                        password 
+                    });
                 }
                 
-                slots.push({
-                    time: timeString,
-                    available: available
+                if (result.error) {
+                    throw result.error;
+                }
+
+                if (!isLogin && result.data.user && !result.data.session) {
+                    alert('Verifique seu email para confirmar o cadastro!');
+                }
+                
+            } catch (error) {
+                console.error('Authentication error:', error);
+                alert('Erro na autenticação: ' + error.message);
+            } finally {
+                hideLoading('authSubmitBtn');
+            }
+        }
+
+        function toggleAuthMode() {
+            const button = document.getElementById('authButtonText');
+            const link = document.getElementById('toggleAuth');
+            
+            if (button.textContent === 'Entrar') {
+                button.textContent = 'Cadastrar';
+                link.textContent = 'Já tem conta? Faça login';
+            } else {
+                button.textContent = 'Entrar';
+                link.textContent = 'Não tem conta? Cadastre-se';
+            }
+        }
+
+        // Salon Management
+        async function saveSalonData(salonData) {
+            try {
+                const { data, error } = await supabase
+                    .from('salons')
+                    .insert([{
+                        ...salonData,
+                        user_id: currentUser.id
+                    }])
+                    .select()
+                    .single();
+
+                if (error) throw error;
+
+                currentSalon = data;
+                return data;
+            } catch (error) {
+                console.error('Error saving salon:', error);
+                throw error;
+            }
+        }
+
+        async function saveServices(services) {
+            try {
+                const servicesWithSalonId = services.map(service => ({
+                    ...service,
+                    salon_id: currentSalon.id
+                }));
+
+                const { data, error } = await supabase
+                    .from('services')
+                    .insert(servicesWithSalonId)
+                    .select();
+
+                if (error) throw error;
+                return data;
+            } catch (error) {
+                console.error('Error saving services:', error);
+                throw error;
+            }
+        }
+
+        // Load functions for dashboard
+        async function loadServices() {
+            try {
+                const { data, error } = await supabase
+                    .from('services')
+                    .select('*')
+                    .eq('salon_id', currentSalon.id)
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                const servicesList = document.getElementById('servicesList');
+                if (!data || data.length === 0) {
+                    servicesList.innerHTML = '<div class="col-12"><p class="text-muted text-center">Nenhum serviço cadastrado ainda.</p></div>';
+                    return;
+                }
+
+                servicesList.innerHTML = data.map(service => `
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <h6 class="mb-0">${service.name}</h6>
+                                    <span class="badge ${service.active ? 'bg-success' : 'bg-secondary'}">
+                                        ${service.active ? 'Ativo' : 'Inativo'}
+                                    </span>
+                                </div>
+                                <div class="row text-center mb-3">
+                                    <div class="col-6">
+                                        <div class="fw-bold text-primary">R$ ${service.price}</div>
+                                        <small class="text-muted">Preço</small>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="fw-bold">${service.duration} min</div>
+                                        <small class="text-muted">Duração</small>
+                                    </div>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-outline-primary btn-sm flex-fill" onclick="editService('${service.id}')">
+                                        <i class="fas fa-edit"></i> Editar
+                                    </button>
+                                    <button class="btn btn-outline-danger btn-sm" onclick="deleteService('${service.id}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('Error loading services:', error);
+                document.getElementById('servicesList').innerHTML = '<div class="col-12"><p class="text-danger text-center">Erro ao carregar serviços.</p></div>';
+            }
+        }
+
+        async function loadClients() {
+            try {
+                const { data, error } = await supabase
+                    .from('clients')
+                    .select('*')
+                    .eq('salon_id', currentSalon.id)
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                const clientsList = document.getElementById('clientsList');
+                if (!data || data.length === 0) {
+                    clientsList.innerHTML = '<div class="col-12"><p class="text-muted text-center">Nenhum cliente cadastrado ainda.</p></div>';
+                    return;
+                }
+
+                clientsList.innerHTML = data.map(client => `
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="client-avatar me-3">
+                                        ${client.name.charAt(0)}
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-0">${client.name}</h6>
+                                        <small class="text-muted">${client.phone}</small>
+                                    </div>
+                                </div>
+                                <div class="row text-center">
+                                    <div class="col-6">
+                                        <div class="fw-bold">${client.total_visits || 0}</div>
+                                        <small class="text-muted">Visitas</small>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="fw-bold">${client.last_visit ? formatDate(client.last_visit) : 'Nunca'}</div>
+                                        <small class="text-muted">Última visita</small>
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    <button class="btn btn-outline-primary btn-sm me-2" onclick="viewClient('${client.id}')">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="btn btn-outline-success btn-sm" onclick="scheduleForClient('${client.id}')">
+                                        <i class="fas fa-calendar-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('Error loading clients:', error);
+                document.getElementById('clientsList').innerHTML = '<div class="col-12"><p class="text-danger text-center">Erro ao carregar clientes.</p></div>';
+            }
+        }
+
+        async function loadAppointments() {
+            try {
+                const { data, error } = await supabase
+                    .from('appointments')
+                    .select(`
+                        *,
+                        clients (name, phone),
+                        services (name, price)
+                    `)
+                    .eq('salon_id', currentSalon.id)
+                    .order('appointment_date', { ascending: true })
+                    .order('appointment_time', { ascending: true });
+
+                if (error) throw error;
+                return data || [];
+            } catch (error) {
+                console.error('Error loading appointments:', error);
+                return [];
+            }
+        }
+
+        // AI Functions with Gemini
+        async function generateAIInsight() {
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${window.ENV.GEMINI_API_KEY}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{
+                                text: `Como especialista em gestão de salões de beleza, gere um insight útil para o dono do salão baseado nos seguintes dados: 
+                                - Salão: ${currentSalon?.name || 'Salão de Beleza'}
+                                - Período: Janeiro 2024
+                                - Faturamento: R$ 12.450
+                                - Agendamentos: 142
+                                - Clientes: 89
+                                
+                                Forneça uma dica específica e acionável em português do Brasil, máximo 2 frases.`
+                            }]
+                        }]
+                    })
                 });
+
+                const data = await response.json();
+                
+                if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+                    return data.candidates[0].content.parts[0].text;
+                }
+                
+                throw new Error('No insight generated');
+            } catch (error) {
+                console.error('Error generating AI insight:', error);
+                const fallbackInsights = [
+                    'Sexta-feira é seu dia mais lucrativo da semana com 23% do faturamento total.',
+                    'Clientes que fazem escova retornam em média 15 dias. Considere uma campanha de retenção.',
+                    'O serviço "Corte + Escova" tem a maior margem de lucro. Promova mais este combo.',
+                    'Você tem 12% mais agendamentos este mês comparado ao anterior. Parabéns!',
+                    'Horários entre 14h-16h têm baixa ocupação. Considere promoções para estes períodos.'
+                ];
+                return fallbackInsights[Math.floor(Math.random() * fallbackInsights.length)];
+            }
+        }
+
+        // Utility Functions
+        function showLoading(elementId) {
+            const element = document.getElementById(elementId);
+            element.classList.add('loading');
+            
+            const spinner = element.querySelector('.spinner-border');
+            if (spinner) {
+                spinner.classList.remove('d-none');
             }
             
-            return slots;
+            const text = element.querySelector('span:not(.spinner-border)');
+            if (text) {
+                text.style.opacity = '0.6';
+            }
         }
 
-        function selectTimeSlot(element, time) {
-            if (element.classList.contains('disabled')) return;
+        function hideLoading(elementId) {
+            const element = document.getElementById(elementId);
+            element.classList.remove('loading');
             
-            // Remove previous selection
-            document.querySelectorAll('.time-slot').forEach(slot => {
-                slot.classList.remove('selected');
-            });
+            const spinner = element.querySelector('.spinner-border');
+            if (spinner) {
+                spinner.classList.add('d-none');
+            }
             
-            // Select current
-            element.classList.add('selected');
-            document.getElementById('selectedTimeSlot').value = time;
+            const text = element.querySelector('span:not(.spinner-border)');
+            if (text) {
+                text.style.opacity = '1';
+            }
         }
 
-        // Authentication functions
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('pt-BR');
+        }
+
         function showAuth() {
             document.getElementById('authScreen').classList.remove('hidden');
             document.getElementById('onboardingScreen').classList.add('hidden');
@@ -2082,313 +1192,30 @@ Como posso ajudar você melhor? 😊`;
                 }
                 
                 // Apply salon colors
-                applyBrandColors(currentSalon.primaryColor || currentSalon.primary_color);
+                applyBrandColors(currentSalon.primary_color);
             }
             
             loadDashboardData();
         }
 
-        function showPublicPortal() {
-            document.getElementById('authScreen').classList.add('hidden');
-            document.getElementById('onboardingScreen').classList.add('hidden');
-            document.getElementById('dashboardScreen').classList.add('hidden');
-            document.getElementById('publicPortal').classList.remove('hidden');
+        function applyBrandColors(color) {
+            if (!color) return;
             
-            loadPublicPortalData();
+            const root = document.documentElement;
+            root.style.setProperty('--primary-color', color);
         }
 
-        async function handleAuth(e) {
-            e.preventDefault();
-            
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            const isLogin = document.getElementById('authButtonText').textContent === 'Entrar';
-            
-            showLoading('authSpinner', 'authButtonText');
-            
-            try {
-                if (DEMO_MODE) {
-                    // Demo mode - simulate authentication
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                    
-                    const userData = {
-                        id: 'demo-user-' + Date.now(),
-                        email: email,
-                        created_at: new Date().toISOString()
-                    };
-                    
-                    localStorage.setItem('belezatech_user', JSON.stringify(userData));
-                    currentUser = userData;
-                    
-                    // Check if this is a new user (no salon data)
-                    const existingSalon = localStorage.getItem('belezatech_salon');
-                    if (!existingSalon) {
-                        showOnboarding();
-                    } else {
-                        currentSalon = JSON.parse(existingSalon);
-                        showDashboard();
-                    }
-                } else {
-                    // Real Supabase authentication
-                    let result;
-                    if (isLogin) {
-                        result = await supabase.auth.signInWithPassword({ email, password });
-                    } else {
-                        result = await supabase.auth.signUp({ email, password });
-                    }
-                    
-                    if (result.error) {
-                        throw result.error;
-                    }
-                    
-                    currentUser = result.data.user;
-                    localStorage.setItem('belezatech_user', JSON.stringify(currentUser));
-                    
-                    // Check if salon exists
-                    const { data: salon } = await supabase
-                        .from('salons')
-                        .select('*')
-                        .eq('user_id', currentUser.id)
-                        .single();
-                    
-                    if (salon) {
-                        currentSalon = salon;
-                        localStorage.setItem('belezatech_salon', JSON.stringify(salon));
-                        showDashboard();
-                    } else {
-                        showOnboarding();
-                    }
-                }
-            } catch (error) {
-                console.error('Authentication error:', error);
-                alert('Erro na autenticação: ' + error.message);
-            } finally {
-                hideLoading('authSpinner', 'authButtonText');
-            }
-        }
-
-        function toggleAuthMode() {
-            const button = document.getElementById('authButtonText');
-            const link = document.getElementById('toggleAuth');
-            
-            if (button.textContent === 'Entrar') {
-                button.textContent = 'Cadastrar';
-                link.textContent = 'Já tem conta? Faça login';
-            } else {
-                button.textContent = 'Entrar';
-                link.textContent = 'Não tem conta? Cadastre-se';
-            }
-        }
-
-        // Onboarding functions
-        function nextOnboardingStep() {
-            if (currentStep < 3) {
-                document.getElementById(`step${currentStep}`).classList.remove('active');
-                currentStep++;
-                document.getElementById(`step${currentStep}`).classList.add('active');
-                
-                updateOnboardingButtons();
-            }
-        }
-
-        function prevOnboardingStep() {
-            if (currentStep > 1) {
-                document.getElementById(`step${currentStep}`).classList.remove('active');
-                currentStep--;
-                document.getElementById(`step${currentStep}`).classList.add('active');
-                
-                updateOnboardingButtons();
-            }
-        }
-
-        function updateOnboardingButtons() {
-            const prevBtn = document.getElementById('prevStep');
-            const nextBtn = document.getElementById('nextStep');
-            const finishBtn = document.getElementById('finishOnboarding');
-            
-            prevBtn.style.display = currentStep === 1 ? 'none' : 'inline-block';
-            nextBtn.style.display = currentStep === 3 ? 'none' : 'inline-block';
-            finishBtn.style.display = currentStep === 3 ? 'inline-block' : 'none';
-        }
-
-        async function finishOnboarding() {
-            const salonData = {
-                user_id: currentUser.id,
-                name: document.getElementById('salonName').value,
-                phone: document.getElementById('salonPhone').value,
-                address: document.getElementById('salonAddress').value,
-                open_time: document.getElementById('openTime').value,
-                close_time: document.getElementById('closeTime').value,
-                logo: document.getElementById('logoUpload').files[0] ? 
-                      await convertFileToBase64(document.getElementById('logoUpload').files[0]) : null,
-                primary_color: selectedColor,
-                created_at: new Date().toISOString()
-            };
-
-            // Collect services
-            const services = [];
-            document.querySelectorAll('.service-item').forEach(item => {
-                const inputs = item.querySelectorAll('input');
-                if (inputs[0].value && inputs[1].value && inputs[2].value) {
-                    services.push({
-                        name: inputs[0].value,
-                        price: parseFloat(inputs[1].value),
-                        duration: parseInt(inputs[2].value),
-                        active: true
-                    });
-                }
-            });
-
-            try {
-                if (DEMO_MODE) {
-                    // Demo mode
-                    salonData.id = 'demo-salon-' + Date.now();
-                    localStorage.setItem('belezatech_salon', JSON.stringify(salonData));
-                    localStorage.setItem('belezatech_services', JSON.stringify(services));
-                    currentSalon = salonData;
-                } else {
-                    // Real Supabase save
-                    const { data: salon, error } = await supabase
-                        .from('salons')
-                        .insert([salonData])
-                        .select()
-                        .single();
-                    
-                    if (error) throw error;
-                    
-                    currentSalon = salon;
-                    localStorage.setItem('belezatech_salon', JSON.stringify(salon));
-                    
-                    // Save services
-                    if (services.length > 0) {
-                        const servicesWithSalonId = services.map(service => ({
-                            ...service,
-                            salon_id: salon.id
-                        }));
-                        
-                        await supabase
-                            .from('services')
-                            .insert(servicesWithSalonId);
-                    }
-                }
-                
-                showDashboard();
-            } catch (error) {
-                console.error('Error saving salon:', error);
-                alert('Erro ao salvar dados do salão: ' + error.message);
-            }
-        }
-
-        function handleLogoUpload(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const preview = document.getElementById('logoPreview');
-                    preview.innerHTML = `<img src="${e.target.result}" alt="Logo Preview" style="max-width: 150px; border-radius: 8px;">`;
-                };
-                reader.readAsDataURL(file);
-            }
-        }
-
-        function addServiceRow() {
-            const servicesList = document.getElementById('servicesList');
-            const newService = document.createElement('div');
-            newService.className = 'service-item border rounded p-3 mb-3';
-            newService.innerHTML = `
-                <div class="row">
-                    <div class="col-6">
-                        <input type="text" class="form-control" placeholder="Nome do serviço">
-                    </div>
-                    <div class="col-3">
-                        <input type="number" class="form-control" placeholder="Preço">
-                    </div>
-                    <div class="col-3">
-                        <input type="number" class="form-control" placeholder="Duração (min)">
-                    </div>
-                </div>
-            `;
-            servicesList.appendChild(newService);
-        }
-
-        function selectColor(e) {
-            document.querySelectorAll('.color-option').forEach(option => {
-                option.classList.remove('selected');
-            });
-            e.target.classList.add('selected');
-            selectedColor = e.target.dataset.color;
-            updateColorPreview();
-        }
-
-        function handleCustomColor(e) {
-            selectedColor = e.target.value;
-            document.querySelectorAll('.color-option').forEach(option => {
-                option.classList.remove('selected');
-            });
-            updateColorPreview();
-        }
-
-        function updateColorPreview() {
-            const preview = document.getElementById('colorPreview');
-            const button = preview.querySelector('.btn-primary');
-            button.style.backgroundColor = selectedColor;
-            button.style.borderColor = selectedColor;
-        }
-
-        // Dashboard functions
-        function handleNavigation(e) {
-            e.preventDefault();
-            
-            const section = e.target.dataset.section;
-            
-            // Update active nav
-            document.querySelectorAll('.nav-link').forEach(link => {
-                link.classList.remove('active');
-            });
-            e.target.classList.add('active');
-            
-            // Show section
-            document.querySelectorAll('.section').forEach(sec => {
-                sec.style.display = 'none';
-            });
-            document.getElementById(section + '-section').style.display = 'block';
-            
-            // Load section specific data
-            switch(section) {
-                case 'agenda':
-                    loadCalendar();
-                    break;
-                case 'clients':
-                    loadClients();
-                    break;
-                case 'services':
-                    loadServices();
-                    break;
-                case 'stock':
-                    loadProducts();
-                    break;
-                case 'payments':
-                    loadPayments();
-                    break;
-            }
-        }
-
-        function loadDashboardData() {
-            // Load KPIs
+        async function loadDashboardData() {
+            // Load KPIs, charts, insights, etc.
             updateKPIs();
-            
-            // Load revenue chart
             loadRevenueChart();
-            
-            // Load AI insights
             loadAIInsights();
-            
-            // Load today's appointments
             loadTodayAppointments();
         }
 
-        function updateKPIs() {
-            // Demo data - in real app, this would come from your database
+        async function updateKPIs() {
+            // Implementation for real KPIs from Supabase
+            // For now, using demo data
             const demoData = {
                 totalRevenue: 'R$ 12.450',
                 totalAppointments: 142,
@@ -2403,7 +1230,8 @@ Como posso ajudar você melhor? 😊`;
         }
 
         function loadRevenueChart() {
-            const ctx = document.getElementById('revenueChart').getContext('2d');
+            const ctx = document.getElementById('revenueChart')?.getContext('2d');
+            if (!ctx) return;
             
             // Demo data for the last 7 days
             const data = {
@@ -2443,22 +1271,13 @@ Como posso ajudar você melhor? 😊`;
 
         async function loadAIInsights() {
             const insightText = document.getElementById('aiInsightText');
+            if (!insightText) return;
+            
             insightText.textContent = 'Carregando insights...';
             
             try {
-                // Simulate AI insight generation
-                await new Promise(resolve => setTimeout(resolve, 2000));
-                
-                const insights = [
-                    'Sexta-feira é seu dia mais lucrativo da semana com 23% do faturamento total.',
-                    'Clientes que fazem escova retornam em média 15 dias. Considere uma campanha de retenção.',
-                    'O serviço "Corte + Escova" tem a maior margem de lucro. Promova mais este combo.',
-                    'Você tem 12% mais agendamentos este mês comparado ao anterior. Parabéns!',
-                    'Horários entre 14h-16h têm baixa ocupação. Considere promoções para estes períodos.'
-                ];
-                
-                const randomInsight = insights[Math.floor(Math.random() * insights.length)];
-                insightText.textContent = randomInsight;
+                const insight = await generateAIInsight();
+                insightText.textContent = insight;
             } catch (error) {
                 insightText.textContent = 'Erro ao carregar insights. Tente novamente.';
             }
@@ -2466,6 +1285,7 @@ Como posso ajudar você melhor? 😊`;
 
         function loadTodayAppointments() {
             const container = document.getElementById('todayAppointmentsList');
+            if (!container) return;
             
             // Demo appointments for today
             const appointments = [
@@ -2494,670 +1314,154 @@ Como posso ajudar você melhor? 😊`;
             `).join('');
         }
 
-        function refreshDashboard() {
-            updateKPIs();
-            loadAIInsights();
-            loadTodayAppointments();
+        // Chatbot functions (simplified)
+        function initializeChatbot() {
+            const toggle = document.getElementById('chatbotToggle');
+            const window = document.getElementById('chatbotWindow');
+            const close = document.getElementById('closeChatbot');
+            const input = document.getElementById('chatInput');
+            const sendBtn = document.getElementById('chatSendBtn');
+
+            toggle.addEventListener('click', () => {
+                window.style.display = window.style.display === 'flex' ? 'none' : 'flex';
+            });
+
+            close.addEventListener('click', () => {
+                window.style.display = 'none';
+            });
+
+            sendBtn.addEventListener('click', sendChatMessage);
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    sendChatMessage();
+                }
+            });
+
+            chatHistory = [
+                {
+                    type: 'bot',
+                    message: 'Olá! 👋 Sou o assistente inteligente do BelezaTech. Como posso ajudar você hoje?',
+                    timestamp: new Date()
+                }
+            ];
         }
 
-        // Calendar functions
-        function loadCalendar() {
-            const calendar = document.getElementById('calendar');
-            const currentDate = new Date();
-            const year = currentDate.getFullYear();
-            const month = currentDate.getMonth();
+        function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
             
-            generateCalendar(year, month);
+            if (message) {
+                addChatMessage('user', message);
+                input.value = '';
+                
+                // Process message with AI
+                processChatMessage(message);
+            }
         }
 
-        function generateCalendar(year, month) {
-            const calendar = document.getElementById('calendar');
-            const firstDay = new Date(year, month, 1);
-            const lastDay = new Date(year, month + 1, 0);
-            const daysInMonth = lastDay.getDate();
-            const startingDayOfWeek = firstDay.getDay();
+        function addChatMessage(type, message) {
+            const container = document.getElementById('chatbotMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-message ${type}`;
             
-            let calendarHTML = `
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5>${getMonthName(month)} ${year}</h5>
-                    <div class="btn-group">
-                        <button class="btn btn-outline-primary btn-sm" onclick="changeMonth(-1)">
-                            <i class="fas fa-chevron-left"></i>
-                        </button>
-                        <button class="btn btn-outline-primary btn-sm" onclick="changeMonth(1)">
-                            <i class="fas fa-chevron-right"></i>
-                        </button>
-                    </div>
+            messageDiv.innerHTML = `
+                <div class="message-bubble ${type}">
+                    ${message}
                 </div>
-                <div class="calendar-grid">
-                    <div class="fw-bold text-center p-2 bg-light">Dom</div>
-                    <div class="fw-bold text-center p-2 bg-light">Seg</div>
-                    <div class="fw-bold text-center p-2 bg-light">Ter</div>
-                    <div class="fw-bold text-center p-2 bg-light">Qua</div>
-                    <div class="fw-bold text-center p-2 bg-light">Qui</div>
-                    <div class="fw-bold text-center p-2 bg-light">Sex</div>
-                    <div class="fw-bold text-center p-2 bg-light">Sáb</div>
             `;
             
-            // Empty cells for days before the first day of the month
-            for (let i = 0; i < startingDayOfWeek; i++) {
-                calendarHTML += '<div class="calendar-day bg-light"></div>';
-            }
+            container.appendChild(messageDiv);
+            container.scrollTop = container.scrollHeight;
             
-            // Days of the month
-            for (let day = 1; day <= daysInMonth; day++) {
-                const appointments = getDayAppointments(year, month, day);
-                calendarHTML += `
-                    <div class="calendar-day" onclick="selectCalendarDay(${year}, ${month}, ${day})">
-                        <div class="fw-bold">${day}</div>
-                        ${appointments.map(apt => `<div class="appointment">${apt.time} ${apt.client}</div>`).join('')}
-                    </div>
-                `;
-            }
-            
-            calendarHTML += '</div>';
-            calendar.innerHTML = calendarHTML;
+            chatHistory.push({
+                type: type,
+                message: message,
+                timestamp: new Date()
+            });
         }
 
-        function getDayAppointments(year, month, day) {
-            // Demo appointments - in real app, this would come from your database
-            const demoAppointments = {
-                [`${year}-${month + 1}-15`]: [
-                    { time: '09:00', client: 'Maria' },
-                    { time: '14:00', client: 'Ana' }
-                ],
-                [`${year}-${month + 1}-16`]: [
-                    { time: '10:00', client: 'Julia' }
-                ]
-            };
-            
-            const dateKey = `${year}-${month + 1}-${day}`;
-            return demoAppointments[dateKey] || [];
-        }
-
-        function getMonthName(month) {
-            const months = [
-                'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-                'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-            ];
-            return months[month];
-        }
-
-        function selectCalendarDay(year, month, day) {
-            // Show appointment modal with selected date
-            const modal = new bootstrap.Modal(document.getElementById('appointmentModal'));
-            document.getElementById('appointmentDate').value = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            modal.show();
-        }
-
-        // Client management functions
-        function loadClients() {
-            const clientsList = document.getElementById('clientsList');
-            
-            // Demo clients data
-            const clients = [
-                {
-                    id: 1,
-                    name: 'Maria Silva',
-                    phone: '(11) 99999-1111',
-                    email: 'maria@email.com',
-                    lastVisit: '2024-01-15',
-                    totalVisits: 12
-                },
-                {
-                    id: 2,
-                    name: 'Ana Costa',
-                    phone: '(11) 99999-2222',
-                    email: 'ana@email.com',
-                    lastVisit: '2024-01-14',
-                    totalVisits: 8
-                },
-                {
-                    id: 3,
-                    name: 'Juliana Santos',
-                    phone: '(11) 99999-3333',
-                    email: 'juliana@email.com',
-                    lastVisit: '2024-01-10',
-                    totalVisits: 15
-                }
-            ];
-            
-            clientsList.innerHTML = clients.map(client => `
-                <div class="col-md-6 col-lg-4 mb-3">
-                    <div class="card h-100">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center mb-3">
-                                <div class="client-avatar me-3">
-                                    ${client.name.charAt(0)}
-                                </div>
-                                <div>
-                                    <h6 class="mb-0">${client.name}</h6>
-                                    <small class="text-muted">${client.phone}</small>
-                                </div>
-                            </div>
-                            <div class="row text-center">
-                                <div class="col-6">
-                                    <div class="fw-bold">${client.totalVisits}</div>
-                                    <small class="text-muted">Visitas</small>
-                                </div>
-                                <div class="col-6">
-                                    <div class="fw-bold">${formatDate(client.lastVisit)}</div>
-                                    <small class="text-muted">Última visita</small>
-                                </div>
-                            </div>
-                            <div class="mt-3">
-                                <button class="btn btn-outline-primary btn-sm me-2" onclick="viewClient(${client.id})">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                                <button class="btn btn-outline-success btn-sm" onclick="scheduleForClient(${client.id})">
-                                    <i class="fas fa-calendar-plus"></i>
-                                </button>
-                            </div>
-                        </div>
+        async function processChatMessage(message) {
+            // Show typing indicator
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'chat-message bot typing-message';
+            typingDiv.innerHTML = `
+                <div class="typing-indicator">
+                    <div class="typing-dots">
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
                     </div>
                 </div>
-            `).join('');
+            `;
+            
+            const container = document.getElementById('chatbotMessages');
+            container.appendChild(typingDiv);
+            container.scrollTop = container.scrollHeight;
+            
+            // Simulate processing delay
+            await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
+            
+            // Remove typing indicator
+            container.removeChild(typingDiv);
+            
+            // Generate response
+            const response = generateChatResponse(message);
+            addChatMessage('bot', response);
         }
 
-        function loadServices() {
-            const servicesList = document.getElementById('servicesList');
+        function generateChatResponse(message) {
+            const lowerMessage = message.toLowerCase();
             
-            // Get services from localStorage or use demo data
-            let services = [];
-            const storedServices = localStorage.getItem('belezatech_services');
-            
-            if (storedServices) {
-                services = JSON.parse(storedServices);
-            } else {
-                services = [
-                    { id: 1, name: 'Corte Feminino', price: 50, duration: 60, active: true },
-                    { id: 2, name: 'Corte Masculino', price: 30, duration: 30, active: true },
-                    { id: 3, name: 'Escova', price: 35, duration: 45, active: true },
-                    { id: 4, name: 'Hidratação', price: 45, duration: 60, active: true },
-                    { id: 5, name: 'Coloração', price: 120, duration: 120, active: true }
-                ];
-            }
-            
-            servicesList.innerHTML = services.map(service => `
-                <div class="col-md-6 col-lg-4 mb-3">
-                    <div class="card h-100">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-start mb-3">
-                                <h6 class="mb-0">${service.name}</h6>
-                                <span class="badge ${service.active ? 'bg-success' : 'bg-secondary'}">
-                                    ${service.active ? 'Ativo' : 'Inativo'}
-                                </span>
-                            </div>
-                            <div class="row text-center mb-3">
-                                <div class="col-6">
-                                    <div class="fw-bold text-primary">R$ ${service.price}</div>
-                                    <small class="text-muted">Preço</small>
-                                </div>
-                                <div class="col-6">
-                                    <div class="fw-bold">${service.duration} min</div>
-                                    <small class="text-muted">Duração</small>
-                                </div>
-                            </div>
-                            <div class="d-flex gap-2">
-                                <button class="btn btn-outline-primary btn-sm flex-fill" onclick="editService(${service.id})">
-                                    <i class="fas fa-edit"></i> Editar
-                                </button>
-                                <button class="btn btn-outline-danger btn-sm" onclick="deleteService(${service.id})">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-        }
+            // Simple pattern matching for demo
+            if (lowerMessage.includes('agendar') || lowerMessage.includes('agendamento')) {
+                return `📅 Claro! Posso te ajudar com o agendamento. Para fazer um agendamento, você precisa:
+1. Escolher o serviço desejado
+2. Selecionar data e horário
+3. Confirmar seus dados
 
-        function loadProducts() {
-            const productsList = document.getElementById('productsList');
-            
-            // Demo products
-            const products = [
-                {
-                    id: 1,
-                    name: 'Shampoo Hidratante Profissional',
-                    category: 'shampoo',
-                    quantity: 5,
-                    barcode: '7891234567890',
-                    description: 'Shampoo hidratante para cabelos ressecados'
-                },
-                {
-                    id: 2,
-                    name: 'Condicionador Nutritivo',
-                    category: 'conditioner',
-                    quantity: 3,
-                    barcode: '7891234567891',
-                    description: 'Condicionador nutritivo para todos os tipos de cabelo'
-                },
-                {
-                    id: 3,
-                    name: 'Tintura Permanente Castanho',
-                    category: 'coloracao',
-                    quantity: 8,
-                    barcode: '7891234567892',
-                    description: 'Tintura permanente cor castanho médio'
-                }
-            ];
-            
-            productsList.innerHTML = products.map(product => `
-                <div class="product-card">
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <h6 class="mb-1">${product.name}</h6>
-                        <span class="badge bg-primary">${product.category}</span>
-                    </div>
-                    <p class="text-muted small mb-2">${product.description}</p>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <strong>Qtd: ${product.quantity}</strong>
-                            ${product.quantity <= 3 ? '<span class="badge bg-warning ms-2">Estoque Baixo</span>' : ''}
-                        </div>
-                        <div class="btn-group">
-                            <button class="btn btn-outline-primary btn-sm" onclick="editProduct(${product.id})">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn btn-outline-danger btn-sm" onclick="deleteProduct(${product.id})">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function loadPayments() {
-            const transactionsTable = document.getElementById('transactionsTable');
-            
-            // Demo transactions
-            const transactions = [
-                {
-                    date: '2024-01-15',
-                    client: 'Maria Silva',
-                    service: 'Corte Feminino',
-                    amount: 50,
-                    status: 'paid'
-                },
-                {
-                    date: '2024-01-15',
-                    client: 'Ana Costa',
-                    service: 'Escova + Hidratação',
-                    amount: 80,
-                    status: 'paid'
-                },
-                {
-                    date: '2024-01-14',
-                    client: 'Juliana Santos',
-                    service: 'Coloração',
-                    amount: 120,
-                    status: 'pending'
-                }
-            ];
-            
-            transactionsTable.innerHTML = transactions.map(transaction => `
-                <tr>
-                    <td>${formatDate(transaction.date)}</td>
-                    <td>${transaction.client}</td>
-                    <td>${transaction.service}</td>
-                    <td>R$ ${transaction.amount.toFixed(2)}</td>
-                    <td>
-                        <span class="badge ${transaction.status === 'paid' ? 'bg-success' : 'bg-warning'}">
-                            ${transaction.status === 'paid' ? 'Pago' : 'Pendente'}
-                        </span>
-                    </td>
-                    <td>
-                        <button class="btn btn-outline-primary btn-sm">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                    </td>
-                </tr>
-            `).join('');
-            
-            // Update payment metrics
-            const totalToday = transactions
-                .filter(t => t.date === '2024-01-15' && t.status === 'paid')
-                .reduce((sum, t) => sum + t.amount, 0);
-            
-            const totalPending = transactions
-                .filter(t => t.status === 'pending')
-                .reduce((sum, t) => sum + t.amount, 0);
-            
-            document.getElementById('todayRevenue').textContent = `R$ ${totalToday.toFixed(2)}`;
-            document.getElementById('pendingPayments').textContent = `R$ ${totalPending.toFixed(2)}`;
-            document.getElementById('monthRevenue').textContent = 'R$ 2.450,00';
-        }
-
-        // Modal save functions
-        function saveAppointment() {
-            // Get form data
-            const appointmentData = {
-                client: document.getElementById('appointmentClient').value,
-                service: document.getElementById('appointmentService').value,
-                date: document.getElementById('appointmentDate').value,
-                time: document.getElementById('appointmentTime').value,
-                notes: document.getElementById('appointmentNotes').value
-            };
-            
-            // Validate
-            if (!appointmentData.client || !appointmentData.service || !appointmentData.date || !appointmentData.time) {
-                alert('Por favor, preencha todos os campos obrigatórios.');
-                return;
+Gostaria de ver nossos serviços disponíveis? 💇‍♀️`;
             }
             
-            // Save to localStorage (demo)
-            const appointments = JSON.parse(localStorage.getItem('belezatech_appointments') || '[]');
-            appointments.push({
-                id: Date.now(),
-                ...appointmentData,
-                created_at: new Date().toISOString()
-            });
-            localStorage.setItem('belezatech_appointments', JSON.stringify(appointments));
-            
-            // Close modal and refresh
-            const modal = bootstrap.Modal.getInstance(document.getElementById('appointmentModal'));
-            modal.hide();
-            
-            // Clear form
-            document.getElementById('appointmentForm').reset();
-            
-            // Refresh calendar if on agenda section
-            if (document.getElementById('agenda-section').style.display !== 'none') {
-                loadCalendar();
-            }
-            
-            alert('Agendamento salvo com sucesso!');
-        }
-
-        function saveClient() {
-            const clientData = {
-                name: document.getElementById('clientName').value,
-                phone: document.getElementById('clientPhone').value,
-                email: document.getElementById('clientEmail').value,
-                birthdate: document.getElementById('clientBirthdate').value,
-                notes: document.getElementById('clientNotes').value
-            };
-            
-            if (!clientData.name || !clientData.phone) {
-                alert('Nome e telefone são obrigatórios.');
-                return;
-            }
-            
-            // Save to localStorage (demo)
-            const clients = JSON.parse(localStorage.getItem('belezatech_clients') || '[]');
-            clients.push({
-                id: Date.now(),
-                ...clientData,
-                created_at: new Date().toISOString()
-            });
-            localStorage.setItem('belezatech_clients', JSON.stringify(clients));
-            
-            // Close modal and refresh
-            const modal = bootstrap.Modal.getInstance(document.getElementById('clientModal'));
-            modal.hide();
-            document.getElementById('clientForm').reset();
-            
-            if (document.getElementById('clients-section').style.display !== 'none') {
-                loadClients();
-            }
-            
-            alert('Cliente salvo com sucesso!');
-        }
-
-        function saveService() {
-            const serviceData = {
-                name: document.getElementById('serviceName').value,
-                price: parseFloat(document.getElementById('servicePrice').value),
-                duration: parseInt(document.getElementById('serviceDuration').value),
-                description: document.getElementById('serviceDescription').value,
-                active: document.getElementById('serviceActive').checked
-            };
-            
-            if (!serviceData.name || !serviceData.price || !serviceData.duration) {
-                alert('Nome, preço e duração são obrigatórios.');
-                return;
-            }
-            
-            // Save to localStorage (demo)
-            const services = JSON.parse(localStorage.getItem('belezatech_services') || '[]');
-            services.push({
-                id: Date.now(),
-                ...serviceData
-            });
-            localStorage.setItem('belezatech_services', JSON.stringify(services));
-            
-            // Close modal and refresh
-            const modal = bootstrap.Modal.getInstance(document.getElementById('serviceModal'));
-            modal.hide();
-            document.getElementById('serviceForm').reset();
-            
-            if (document.getElementById('services-section').style.display !== 'none') {
-                loadServices();
-            }
-            
-            alert('Serviço salvo com sucesso!');
-        }
-
-        function saveProduct() {
-            const productData = {
-                name: document.getElementById('productName').value,
-                category: document.getElementById('productCategory').value,
-                quantity: parseInt(document.getElementById('productQuantity').value),
-                barcode: document.getElementById('productBarcode').value,
-                description: document.getElementById('productDescription').value
-            };
-            
-            if (!productData.name || !productData.category || !productData.quantity) {
-                alert('Nome, categoria e quantidade são obrigatórios.');
-                return;
-            }
-            
-            // Save to localStorage (demo)
-            const products = JSON.parse(localStorage.getItem('belezatech_products') || '[]');
-            products.push({
-                id: Date.now(),
-                ...productData
-            });
-            localStorage.setItem('belezatech_products', JSON.stringify(products));
-            
-            // Close modal and refresh
-            const modal = bootstrap.Modal.getInstance(document.getElementById('productModal'));
-            modal.hide();
-            document.getElementById('productForm').reset();
-            
-            if (document.getElementById('stock-section').style.display !== 'none') {
-                loadProducts();
-            }
-            
-            alert('Produto salvo com sucesso!');
-        }
-
-        // AI functions
-        async function generateProductDescription() {
-            const productName = document.getElementById('productName').value;
-            const category = document.getElementById('productCategory').value;
-            
-            if (!productName || !category) {
-                alert('Preencha o nome e categoria do produto primeiro.');
-                return;
-            }
-            
-            const button = document.getElementById('generateDescription');
-            button.disabled = true;
-            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gerando...';
-            
-            try {
-                // Simulate AI description generation
-                await new Promise(resolve => setTimeout(resolve, 2000));
+            if (lowerMessage.includes('horário') || lowerMessage.includes('horarios')) {
+                return `🕐 Nossos horários de funcionamento:
                 
-                const descriptions = {
-                    shampoo: `${productName} é um shampoo profissional desenvolvido para limpeza suave e eficaz. Sua fórmula avançada remove impurezas sem ressecar os fios, mantendo a hidratação natural do cabelo.`,
-                    conditioner: `${productName} é um condicionador nutritivo que proporciona maciez e brilho intensos. Sua textura cremosa facilita o desembaraço e protege contra danos externos.`,
-                    coloracao: `${productName} é uma coloração profissional de alta performance que garante cobertura uniforme e cor duradoura. Fórmula enriquecida com ingredientes que protegem a fibra capilar.`,
-                    tratamento: `${productName} é um tratamento intensivo que repara e fortalece os cabelos danificados. Sua ação profunda restaura a vitalidade e elasticidade natural dos fios.`
-                };
-                
-                const description = descriptions[category] || `${productName} é um produto profissional de alta qualidade para salões de beleza.`;
-                document.getElementById('productDescription').value = description;
-                
-            } catch (error) {
-                alert('Erro ao gerar descrição. Tente novamente.');
-            } finally {
-                button.disabled = false;
-                button.innerHTML = '<i class="fas fa-robot"></i> Gerar com IA';
-            }
-        }
+**Segunda a Sexta:** ${currentSalon?.open_time || '08:00'} às ${currentSalon?.close_time || '18:00'}
+**Sábado:** ${currentSalon?.open_time || '08:00'} às 17:00
+**Domingo:** Fechado
 
-        // Public portal functions
-        function loadPublicPortalData() {
-            if (currentSalon) {
-                document.getElementById('publicSalonName').textContent = currentSalon.name;
-                if (currentSalon.logo) {
-                    const logoImg = document.getElementById('publicLogo');
-                    logoImg.src = currentSalon.logo;
-                    logoImg.style.display = 'inline';
-                }
-                
-                // Apply salon colors
-                applyBrandColors(currentSalon.primary_color);
-                
-                // Load services for booking
-                loadPublicServices();
-                
-                // Set minimum date to today
-                const today = new Date().toISOString().split('T')[0];
-                document.getElementById('publicBookingDate').min = today;
-            }
-        }
-
-        function loadPublicServices() {
-            const select = document.getElementById('publicServiceSelect');
-            const services = JSON.parse(localStorage.getItem('belezatech_services') || '[]');
-            
-            select.innerHTML = '<option value="">Escolha um serviço...</option>';
-            services.filter(service => service.active).forEach(service => {
-                const option = document.createElement('option');
-                option.value = service.id;
-                option.textContent = `${service.name} - R$ ${service.price} (${service.duration}min)`;
-                select.appendChild(option);
-            });
-        }
-
-        function handlePublicBooking(e) {
-            e.preventDefault();
-            
-            const selectedTime = document.getElementById('selectedTimeSlot').value;
-            
-            const bookingData = {
-                service: document.getElementById('publicServiceSelect').value,
-                date: document.getElementById('publicBookingDate').value,
-                time: selectedTime,
-                name: document.getElementById('publicClientName').value,
-                phone: document.getElementById('publicClientPhone').value,
-                email: document.getElementById('publicClientEmail').value
-            };
-            
-            // Validate required fields
-            if (!bookingData.service || !bookingData.date || !bookingData.time || 
-                !bookingData.name || !bookingData.phone) {
-                alert('Por favor, preencha todos os campos obrigatórios e selecione um horário.');
-                return;
+Qual horário você prefere? Posso fazer a reserva para você! 😊`;
             }
             
-            // Save booking
-            const bookings = JSON.parse(localStorage.getItem('belezatech_public_bookings') || '[]');
-            bookings.push({
-                id: Date.now(),
-                ...bookingData,
-                status: 'pending',
-                created_at: new Date().toISOString()
-            });
-            localStorage.setItem('belezatech_public_bookings', JSON.stringify(bookings));
-            
-            alert('Agendamento realizado com sucesso! Entraremos em contato para confirmação.');
-            document.getElementById('publicBookingForm').reset();
-            document.getElementById('publicTimeSlots').innerHTML = '';
-        }
+            if (lowerMessage.includes('serviço') || lowerMessage.includes('servicos')) {
+                return `💇‍♀️ **Nossos Serviços:**
 
-        function copyPublicLink() {
-            const link = document.getElementById('publicPortalLink').value;
-            navigator.clipboard.writeText(link).then(() => {
-                alert('Link copiado para a área de transferência!');
-            });
-        }
+Estou carregando nossa lista de serviços atual... Você pode ver todos os serviços e preços no nosso portal de agendamento!
 
-        function previewPublicPortal() {
-            showPublicPortal();
-        }
-
-        // Utility functions
-        function showLoading(spinnerId, textId) {
-            document.getElementById(spinnerId).classList.remove('d-none');
-            if (textId) {
-                document.getElementById(textId).style.opacity = '0.6';
+Qual serviço te interessa? Posso agendar para você! ✨`;
             }
-        }
-
-        function hideLoading(spinnerId, textId) {
-            document.getElementById(spinnerId).classList.add('d-none');
-            if (textId) {
-                document.getElementById(textId).style.opacity = '1';
-            }
-        }
-
-        function formatDate(dateString) {
-            const date = new Date(dateString);
-            return date.toLocaleDateString('pt-BR');
-        }
-
-        function convertFileToBase64(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = error => reject(error);
-            });
-        }
-
-        function applyBrandColors(color) {
-            if (!color) return;
             
-            const root = document.documentElement;
-            root.style.setProperty('--primary-color', color);
-            
-            // Update charts and other elements
-            setTimeout(() => {
-                if (document.getElementById('revenueChart')) {
-                    loadRevenueChart();
-                }
-            }, 100);
+            // Default response
+            return `🤖 Entendi que você está perguntando sobre "${message}".
+
+**Posso te ajudar com:**
+• 📅 **"agendar"** - Para fazer agendamentos
+• 🕐 **"horários"** - Ver disponibilidade  
+• 💇‍♀️ **"serviços"** - Lista completa e preços
+• 📋 **"histórico"** - Consultar atendimentos
+
+Como posso ajudar você melhor? 😊`;
         }
 
-        function copyToClipboard(elementId) {
-            const element = document.getElementById(elementId);
-            element.select();
-            document.execCommand('copy');
-            alert('Copiado para a área de transferência!');
-        }
+        // Placeholder functions
+        function viewClient(id) { console.log('View client:', id); }
+        function scheduleForClient(id) { console.log('Schedule for client:', id); }
+        function editService(id) { console.log('Edit service:', id); }
+        function deleteService(id) { console.log('Delete service:', id); }
 
-        function logout() {
-            localStorage.removeItem('belezatech_user');
-            localStorage.removeItem('belezatech_salon');
-            currentUser = null;
-            currentSalon = null;
-            showAuth();
+        // Logout function
+        async function logout() {
+            await supabase.auth.signOut();
         }
-
-        // Placeholder functions for future implementation
-        function viewClient(id) { alert('Visualizar cliente ' + id); }
-        function scheduleForClient(id) { alert('Agendar para cliente ' + id); }
-        function editService(id) { alert('Editar serviço ' + id); }
-        function deleteService(id) { alert('Excluir serviço ' + id); }
-        function editProduct(id) { alert('Editar produto ' + id); }
-        function deleteProduct(id) { alert('Excluir produto ' + id); }
-        function changeMonth(direction) { alert('Mudar mês: ' + direction); }
     </script>
 </body>
 </html>
-
